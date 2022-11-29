@@ -486,7 +486,7 @@ export class Project extends Scene {
         this.bolt_lines.forEach((element) => {
             element.draw(context, program_state, Mat4.identity(), this.materials.bolt);
         });*/
-        const fan_axis = Mat4.identity().times(Mat4.translation(27,7,35ssss));
+        const fan_axis = Mat4.identity().times(Mat4.translation(27,7,35));
 
         this.time_elapsed = t;
 

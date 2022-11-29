@@ -1,8 +1,10 @@
 import {defs, tiny} from './examples/common.js';
 
 const {
-    Vector, Vector3, vec, vec3, vec4, color, hex_color, Shader, Matrix, Mat4, Light, Shape, Material, Scene,
+    Vector, Vector3, vec, vec3, vec4, color, hex_color, Shader, Matrix, Mat4, Light, Shape, Material, Scene, Texture
 } = tiny;
+
+const {Textured_Phong} = defs
 
 class Line extends Shape {
     constructor() {
@@ -17,39 +19,21 @@ class Line extends Shape {
     }
 }
 
-class Cube_Outline extends Shape {
-    constructor() {
-        super("position", "color");
-        //  TODO (Requirement 5).
-        // When a set of lines is used in graphics, you should think of the list entries as
-        // broken down into pairs; each pair of vertices will be drawn as a line segment.
-        // Note: since the outline is rendered with Basic_shader, you need to redefine the position and color of each vertex
-        this.arrays.position = [
-            [-1, -1, -1], [1, -1, -1], 
-            [1, -1, -1], [1, -1, 1], 
-            [1, -1, 1], [-1, -1, 1],
-            [-1, -1, 1], [-1, -1, -1],
-
-            [-1, 1, -1], [1, 1, -1], 
-            [1, 1, -1], [1, 1, 1], 
-            [1, 1, 1], [-1, 1, 1],
-            [-1, 1, 1], [-1, 1, -1],
-
-            [-1, -1, -1], [-1, 1, -1],
-            [1, -1, -1], [1, 1, -1],
-            [1, -1, 1], [1, 1, 1],
-            [-1, -1, 1], [-1, 1, 1]];
-            
-        const white = hex_color("#ffffff");
-        this.arrays.color = Array(24).fill(white);
-        this.indices = false;
-    }
-}
-
 export class Project extends Scene {
     constructor() {
         // constructor(): Scenes begin by populating initial values like the Shapes and Materials they'll need.
         super();
+
+        //Environment
+        this.floor_tran = Mat4.identity();
+        this.floor_tran = this.floor_tran.times(Mat4.translation(0,-10,0));
+        this.floor_tran = this.floor_tran.times(Mat4.rotation(Math.PI*1/2, -1, 0, 0));
+        this.floor_tran = this.floor_tran.times(Mat4.scale(200, 200, 200));
+
+        this.pond_tran = Mat4.identity();
+        this.pond_tran = this.pond_tran.times(Mat4.translation(0,-9.5,95));
+        this.pond_tran = this.pond_tran.times(Mat4.rotation(Math.PI*1/2, -1, 0, 0));
+        this.pond_tran = this.pond_tran.times(Mat4.scale(30, 20, 20));
 
         // At the beginning of our program, load one of each of these shape definitions onto the GPU.
         this.shapes = {
@@ -58,7 +42,17 @@ export class Project extends Scene {
             snow: new defs.Triangle(),
             cone: new defs.Cone_Tip(3, 20, [[0, 1], [0, 1]]), //added this
             rain: new defs.Rounded_Capped_Cylinder(3, 15, [[0, 1], [0, 1]]),
+
             bolt: new Line(),
+            square: new defs.Cube(),
+            triangle: new defs.Rounded_Capped_Cylinder(10,3),
+            cylinder: new defs.Rounded_Capped_Cylinder(10,40),
+            conic: new defs.Closed_Cone(10,6),
+
+            mtn:  new defs.Rounded_Closed_Cone(5,5),
+            hill: new defs.Subdivision_Sphere(4),
+            floor: new defs.Square(100, 100),
+            pond: new defs.Regular_2D_Polygon(10,10),
         };
 
         // *** Materials
@@ -71,19 +65,26 @@ export class Project extends Scene {
                 {ambient: 0, color: hex_color("#b87d11")}),
             // TODO:  Fill in as many additional material objects as needed in this key/value table.
             //        (Requirement 4)
-            sun: new Material(new defs.Phong_Shader(),
-                {ambient: 1, diffusivity: 0, specularity: 0, color: hex_color("#ffffff")}),
-            planet_1: new Material(new defs.Phong_Shader(), 
-                {ambient: 0, diffusivity: 1, color: hex_color("#808080")}),
-            planet_2_even: new Material(new defs.Phong_Shader(),
-                {ambient: 0, diffusivity: 0.1, specularity: 1, color: hex_color("#80ffff")}),
-            plane_2_odd: new Material(new Gouraud_Shader(),
-                {ambient: 0, diffusivity: 0.1, specularity: 1, color: hex_color("#80ffff")}),
-            planet_3: new Material(new defs.Phong_Shader(), 
-                {ambient: 0, diffusivity: 1, specularity: 1, color: hex_color("#B08040")}),
-            planet_3r: new Material(new Ring_Shader()),
-            planet_4: new Material(new defs.Phong_Shader(), {ambient: 0, specularity: 0.9, color: hex_color("#c7e4ee")}),
-            moon: new Material(new defs.Phong_Shader(), {ambient: 0, diffusivity: 0.9, color: hex_color("#FFFFFF")}),
+            glue: new Material(new defs.Phong_Shader(),
+                {ambient: .2, diffusivity: .6, color: hex_color("#ffffff")}),
+            fan: new Material(new defs.Phong_Shader(),
+                {ambient: .2, diffusivity: .6, color: hex_color("#ffffff")}),
+
+            phong: new Material(new Textured_Phong(), {
+                color: hex_color("#000000"),
+                ambient: 1, diffusivity: 0.1, specularity: 0.1,
+            }),
+            rock1: new Material(new Textured_Phong(), {
+                color: hex_color("#000000"),
+                ambient: 1, diffusivity: 0.1, specularity: 0.1,
+                texture: new Texture("assets/rock3.png")
+            }),
+            rock2: new Material(new Textured_Phong(), {
+                color: hex_color("#000000"),
+                ambient: 1, diffusivity: 0.1, specularity: 0.1,
+                texture: new Texture("assets/rock2.png")
+            }),
+
             snow: new Material(new defs.Phong_Shader(), 
                 {ambient: 1, diffusivity: 1, specularity: 1, color: hex_color("#c7dcff")}),
             rain: new Material(new defs.Phong_Shader(), 
@@ -102,6 +103,11 @@ export class Project extends Scene {
         this.rain_dt = 0;
         this.bolt = null;
         this.bolt_lines = [new Line(vec3(0,0,0), vec3(0,1,0))];
+        this.rot_trigger = 0;
+        this.curr_rot = 0;
+        this.rot_speed = 0;
+        this.time_elapsed = 0;
+        this.time_snapshot = 0;
     }
 
     make_control_panel() {
@@ -115,6 +121,26 @@ export class Project extends Scene {
         this.key_triggered_button("Attach to planet 4", ["Wind Intensity + 1", "w"], () => this.attached = () => this.planet_4);
         this.new_line();
         this.key_triggered_button("Attach to moon", ["Wind Intensity - 1", "m"], () => this.attached = () => this.moon);
+    }
+
+    windpx(){
+        this.rot_trigger = 1;
+    }
+
+    windnx(){
+        this.rot_trigger = 2;
+    }
+
+    stopwind(){
+        this.rot_trigger = 0;
+    }
+
+    immediatestop(){this2
+        this.rot_trigger = 3;
+    }
+
+    gust(){
+        this.rot_trigger = 4;
     }
 
     generate_snow(context, program_state, t, dt, wind){
@@ -452,16 +478,134 @@ export class Project extends Scene {
 
         }*/
         //console.log(this.bolt_lines);
-        let trans = Mat4.identity().times(Mat4.translation(0,0,0)).times(Mat4.scale(2,1,1));
+        //let trans = Mat4.identity().times(Mat4.translation(0,0,0)).times(Mat4.scale(2,1,1));
         //this.shapes.bolt.draw(context, program_state, Mat4.identity().times(Mat4.rotation(Math.PI/2, 0, 1, 0)), this.materials.bolt);
-        this.draw_bolt(context, program_state, 4);
+        //this.draw_bolt(context, program_state, 4);
         //console.log(this.bolt);
         /*
         this.bolt_lines.forEach((element) => {
             element.draw(context, program_state, Mat4.identity(), this.materials.bolt);
         });*/
-        
+        const fan_axis = Mat4.identity().times(Mat4.translation(27,7,35ssss));
 
+        this.time_elapsed = t;
+
+        //case of trigger positive rotation and rotation speed not there yet
+        if (this.rot_trigger == 1 && this.rot_speed <= 0.1){
+            this.rot_speed = this.rot_speed + 0.0003;
+            if(this.rot_speed > 0)
+                this.rot_speed = this.rot_speed + this.rot_speed/70;
+        }
+        if (this.rot_trigger == 1 && this.rot_speed > 0.1){
+            this.rot_speed = this.rot_speed/1.01
+        }
+
+        //case of trigger neg rotation and rotation speed not there yet
+        if (this.rot_trigger == 2 && this.rot_speed >= -0.1){
+            this.rot_speed = this.rot_speed - 0.0003;
+            if(this.rot_speed < 0)
+                this.rot_speed = this.rot_speed + this.rot_speed/70;
+        }
+
+        //case of wind stopping
+        if(this.rot_trigger == 0) {
+            if (Math.abs(this.rot_speed) > 0.0001) {
+                this.rot_speed = this.rot_speed / 1.004;
+            }
+        }
+
+        //case of instant stop fans for view/debug
+        if(this.rot_trigger == 3)
+            this.rot_speed = 0;
+
+
+        if(this.rot_trigger == 4){
+            let diff = this.time_elapsed - this.time_snapshot;
+            if(diff <= 3 && this.rot_speed <= 1) {
+                this.rot_speed = this.rot_speed + diff / 30;
+            }
+            else{
+                this.rot_speed = this.rot_speed/1.01;
+            }
+        }
+
+        this.curr_rot = this.curr_rot + this.rot_speed;
+        let fan1 = fan_axis.times(Mat4.rotation(this.curr_rot, 0, 0, 1))
+                .times(Mat4.rotation(-0.8,1,0,0))
+                .times(Mat4.scale(2,0.5,0.1))
+                .times(Mat4.translation(0.9, 0, 0));
+
+        let fan2 = fan_axis.times(Mat4.rotation(this.curr_rot+2*Math.PI/3, 0, 0, 1))
+            .times(Mat4.rotation(-0.8,1,0,0))
+            .times(Mat4.scale(2,0.5,0.1))
+            .times(Mat4.translation(0.9, 0, 0));
+
+        let fan3 = fan_axis.times(Mat4.rotation(this.curr_rot+4*Math.PI/3, 0, 0, 1))
+            .times(Mat4.rotation(-0.8,1,0,0))
+            .times(Mat4.scale(2,0.5,0.1))
+            .times(Mat4.translation(0.9, 0, 0));
+
+        let triangle_transform = fan_axis.times(Mat4.rotation(this.curr_rot + Math.PI/3, 0,0,1))
+            .times(Mat4.scale(0.9,0.9,1.1));
+
+        let circular_axis = fan_axis.times(Mat4.translation(0,0,-1))
+            .times(Mat4.scale(0.2,0.2,1));
+
+        let staff = fan_axis.times(Mat4.translation(0,-3,-2))
+            .times(Mat4.scale(0.5,4,0.5));
+
+        let cone_test = fan_axis.times(Mat4.translation(0,-2.5,-1.5))
+            .times(Mat4.rotation(-Math.PI/2, 1, 0, 0))
+            .times(Mat4.scale(2,2,5));
+
+        this.shapes.triangle.draw(context, program_state, triangle_transform, this.materials.glue);
+        this.shapes.square.draw(context, program_state, fan1, this.materials.fan.override({color: color(0.3,0.8,0.5,1)}));
+        this.shapes.square.draw(context, program_state, fan2, this.materials.fan.override({color: color(0.3,0.5,0.8,1)}));
+        this.shapes.square.draw(context, program_state, fan3, this.materials.fan.override({color: color(0.8,0.5,0.3,1)}));
+
+        this.shapes.cylinder.draw(context, program_state, circular_axis, this.materials.glue.override({color: color(0.3,0.3,0.3,1)}));
+        //this.shapes.square.draw(context, program_state, staff, this.materials.fan.override({color: hex_color("#65788a")}));
+
+        this.shapes.conic.draw(context, program_state, cone_test, this.materials.fan.override({color: hex_color("#65788a")}));
+   
+        const water = hex_color("#83D7EE");
+        const grass_green1 = hex_color('#7CFC00');
+        const grass_green2 = hex_color("#009A17");
+        const grass_green3 = hex_color("#00A619");
+        const grass_green4 = hex_color("#008013");
+        const grass_green5 = hex_color("#09B051");
+        const grass_green6 = hex_color("#59A608");
+
+        let mtn_tran = Mat4.identity();
+        mtn_tran = mtn_tran.times(Mat4.rotation(Math.PI*1/2, -1, 0, 0));
+        mtn_tran = mtn_tran.times(Mat4.scale(20, 20, 10));
+
+        let hill_tran = Mat4.identity();
+        hill_tran = hill_tran.times(Mat4.rotation(Math.PI*1/2, 0, 1, 0));
+        hill_tran = hill_tran.times(Mat4.rotation(Math.PI*1/2, 0, 0, 1));
+        hill_tran = hill_tran.times(Mat4.scale(20, 10, 30));
+        let hill_tran1 = hill_tran.times(Mat4.translation(-1, 3, 1));
+        //let hill_tran2 = hill_tran.times(Mat4.translation(20, 30, -20));
+        
+        let mtn_tran11 = mtn_tran.times(Mat4.translation(-1, 0, 0));
+        let mtn_tran10 = mtn_tran.times(Mat4.translation(0, 1, 0));
+        let mtn_tran9 = mtn_tran.times(Mat4.translation(1, 0, 0));
+        let mtn_tran8 = mtn_tran.times(Mat4.translation(2, 0.5, 0));
+        let mtn_tran7 = mtn_tran.times(Mat4.translation(-2,0.5, 0));
+        let mtn_tran6 = mtn_tran.times(Mat4.translation(3, 0, 0));
+        let mtn_tran5 = mtn_tran.times(Mat4.translation(-3, 0, 0));
+        this.shapes.mtn.draw(context, program_state, mtn_tran11, this.materials.rock1);
+        this.shapes.mtn.draw(context, program_state, mtn_tran10, this.materials.rock2);
+        this.shapes.mtn.draw(context, program_state, mtn_tran9, this.materials.rock1);
+        this.shapes.mtn.draw(context, program_state, mtn_tran8, this.materials.rock2);
+        this.shapes.mtn.draw(context, program_state, mtn_tran7, this.materials.rock1);
+        this.shapes.mtn.draw(context, program_state, mtn_tran6, this.materials.rock2);
+        this.shapes.mtn.draw(context, program_state, mtn_tran5, this.materials.rock2);
+        this.shapes.hill.draw(context, program_state, hill_tran1, this.materials.phong.override({color: grass_green4}));
+        //this.shapes.hill.draw(context, program_state, hill_tran2, this.materials.phong.override({color: grass_green4}));
+        this.shapes.floor.draw(context, program_state, this.floor_tran, this.materials.phong.override({color: grass_green2}));
+        this.shapes.pond.draw(context, program_state, this.pond_tran, this.materials.phong.override({color: water}));
+    
     }
 }
 

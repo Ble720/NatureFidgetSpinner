@@ -143,7 +143,7 @@ export class Project extends Scene {
         this.rot_trigger = 4;
     }
 
-    generate_snow(context, program_state, t, dt, wind){
+    generate_snow(context, program_state, initial_transform, t, dt, wind){
         this.snow_list.forEach((element, index) => {
             let delta_time = t-element[4];
             let f = 10*Math.sin(Math.PI/10*(delta_time)-Math.PI/2)+5;
@@ -153,7 +153,7 @@ export class Project extends Scene {
             let dz = wind[2]*wind[3]*delta_time; //Math.cos(wind[0])*wind[1]
 
 
-            let snow_transform = Mat4.translation(20*element[0]+dx, 10-f+element[1], 10*element[2]+dz).times(Mat4.scale(0.1, 0.1, 0.1));
+            let snow_transform = initial_transform.times(Mat4.translation(20*element[0]+dx, 10-f+element[1], 10*element[2]+dz)).times(Mat4.scale(0.1, 0.1, 0.1));
             snow_transform = snow_transform.times(Mat4.rotation(element[3]+f*Math.PI/2, 1, 1, 1));
             this.shapes.snow.draw(context, program_state, snow_transform, this.materials.snow);
             if((10 - f + element[1]) < 0){
@@ -168,7 +168,7 @@ export class Project extends Scene {
                 let y = 3*Math.random();
                 let r = Math.random();
         
-                let snow_transform = Mat4.translation(20*x, 10+y, 15*z).times(Mat4.scale(1, 1, 1)).times(Mat4.rotation(r, 1, 1, 1));
+                let snow_transform = initial_transform.times(Mat4.translation(20*x, 10+y, 15*z)).times(Mat4.scale(0.1, 0.1, 0.1)).times(Mat4.rotation(r, 1, 1, 1));
                 this.snow_list.push(Array(x, y, z, r, t));
                 this.shapes.snow.draw(context, program_state, snow_transform, this.materials.snow);
             }
@@ -213,7 +213,7 @@ export class Project extends Scene {
 
     }
 
-    generate_rain(context, program_state, t, dt, wind){
+    generate_rain(context, program_state, initial_transform, t, dt, wind){
         let rain_angle = Math.PI/4*(wind[3]/10);
 
         //Math.(wind[0])*wind[1]
@@ -227,7 +227,7 @@ export class Project extends Scene {
             let dx = wind[0]*wind[3]*delta_time;
             let dz = wind[2]*wind[3]*delta_time;
 
-            let rain_transform = Mat4.translation(20*element[0]+dx, 10-f+element[1], 10*element[2]+dz).times(Mat4.rotation(Math.PI/2 - this.calcXZangle(wind), 0, 1, 0));
+            let rain_transform = initial_transform.times(Mat4.translation(20*element[0]+dx, 10-f+element[1], 10*element[2]+dz)).times(Mat4.rotation(Math.PI/2 - this.calcXZangle(wind), 0, 1, 0));
             rain_transform = rain_transform.times(Mat4.rotation(Math.PI/2-rain_angle, 1, 0, 0)).times(Mat4.scale(0.01, 0.01, 0.6));
             this.shapes.rain.draw(context, program_state, rain_transform, this.materials.rain);
             if(10-f+element[1] < 0){
@@ -243,7 +243,7 @@ export class Project extends Scene {
                 let z = 2*Math.random()-1;
                 let y = 5*Math.random();
         
-                let rain_transform = Mat4.translation(20*x, 10+y, 15*z).times(Mat4.rotation(Math.PI/2-rain_angle, 1, 0, 0)).times(Mat4.scale(0.02, 0.02, 1));
+                let rain_transform = initial_transform.times(Mat4.translation(20*x, 10+y, 15*z)).times(Mat4.rotation(Math.PI/2-rain_angle, 1, 0, 0)).times(Mat4.scale(0.01, 0.01, 0.6));
                 this.rain_list.push(Array(x, y, z, t));
                 this.shapes.rain.draw(context, program_state, rain_transform, this.materials.rain);
             }
@@ -456,14 +456,14 @@ export class Project extends Scene {
 
        
            
-    
+        let middle = Mat4.translation(27, 0, 35);
         /*
         let rain_transform = Mat4.identity().times(Mat4.rotation(0, 0, 1, 0)); //Math.PI/2-rain_angle
         rain_transform = rain_transform.times(Mat4.rotation(Math.PI/4, 1, 0, 0)).times(Mat4.translation(0, 0, 0)).times(Mat4.scale(0.01, 0.01, 0.6));
         this.shapes.rain.draw(context, program_state, rain_transform, this.materials.rain);
         this.shapes.snow.draw(context, program_state, Mat4.identity(), this.materials.snow);*/
-        //this.generate_snow(context, program_state, t, [1, 0, 1, 1]);
-        //this.generate_rain(context, program_state, t, dt, [0, 0, 1, 10]);
+        //this.generate_snow(context, program_state, middle, t, dt, [1, 0, 0, 1]);
+        //this.generate_rain(context, program_state, middle, t, dt, [1, 0, 0, 10]);
        //this.generate_tornado(context, program_state, model_transform, t);
         //model_transform = model_transform.times(Mat4.rotation(Math.PI/2, 1, 0, 0)).times(Mat4.scale(0.5, 0.5, 1));
         //this.shapes.rain.draw(context, program_state, model_transform, this.materials.rain.override({color: hex_color("#c7e4ee", 1)})); //

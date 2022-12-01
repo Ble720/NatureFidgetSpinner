@@ -30,6 +30,11 @@ export class Project extends Scene {
         this.floor_tran = this.floor_tran.times(Mat4.rotation(Math.PI*1/2, -1, 0, 0));
         this.floor_tran = this.floor_tran.times(Mat4.scale(200, 200, 200));
 
+        this.night = false
+        this.sky_tran = Mat4.identity().times(Mat4.translation(0, 80, -100)).times(Mat4.scale(200,100,1));
+
+        this.sun_tran = Mat4.identity().times(Mat4.translation(0, 40, -95)).times(Mat4.scale(25, 25, 1));
+
         this.pond_tran = Mat4.identity();
         this.pond_tran = this.pond_tran.times(Mat4.translation(0,-9.5,95));
         this.pond_tran = this.pond_tran.times(Mat4.rotation(Math.PI*1/2, -1, 0, 0));
@@ -53,10 +58,13 @@ export class Project extends Scene {
             hill: new defs.Subdivision_Sphere(4),
             floor: new defs.Square(100, 100),
             pond: new defs.Regular_2D_Polygon(10,10),
+            sky: new defs.Square(100, 100),
         };
 
         // *** Materials
         this.materials = {
+            sky: new Material(new defs.Phong_Shader(),
+                {ambient: 1, diffusivity: 1, color: hex_color("#87ceeb")}),
             test: new Material(new defs.Phong_Shader(),
                 {ambient: .4, diffusivity: .6, color: hex_color("#ffffff")}),
             test2: new Material(new Gouraud_Shader(),
@@ -396,6 +404,19 @@ export class Project extends Scene {
         }
     }
 
+    draw_background(context, program_state, model_transform, night) {
+        //let sky_tran = model_transform;
+        //let sky_hex = hex_color('#87ceeb')
+        if (night) {
+            this.shapes.floor.draw(context, program_state, this.sky_tran, this.materials.sky);
+            this.shapes.circle.draw(context, program_state, this.sun_tran, this.materials.sky.override({color: hex_color("#FDB813")}));
+        } else {
+            this.shapes.floor.draw(context, program_state, this.sky_tran, this.materials.sky);
+            this.shapes.circle.draw(context, program_state, this.sun_tran, this.materials.sky.override({color: hex_color("#FDB813")}));
+        }
+        
+    }
+    
     display(context, program_state) {
         const t = program_state.animation_time / 1000, dt = program_state.animation_delta_time / 1000;
         // display():  Called once per frame of animation.
@@ -418,7 +439,7 @@ export class Project extends Scene {
         
         
         // TODO: Lighting (Requirement 2)
-        const light_position = vec4(0, 5, 5, 1); //0,5,5,1
+        const light_position = vec4(0, 40, -95, 1); //0,5,5,1
         // The parameters of the Light are: position, color, size
         program_state.lights = [new Light(light_position, color(1, 1, 1, 1), 10)];
 
@@ -567,6 +588,8 @@ export class Project extends Scene {
         //this.shapes.square.draw(context, program_state, staff, this.materials.fan.override({color: hex_color("#65788a")}));
 
         this.shapes.conic.draw(context, program_state, cone_test, this.materials.fan.override({color: hex_color("#65788a")}));
+
+        this.draw_background(context, program_state, this.sky_tran, this.night);
    
         const water = hex_color("#83D7EE");
         const grass_green1 = hex_color('#7CFC00');

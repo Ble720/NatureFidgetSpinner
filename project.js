@@ -45,8 +45,12 @@ export class Project extends Scene {
             sphere: new defs.Subdivision_Sphere(4),
             circle: new defs.Regular_2D_Polygon(1, 15),
             snow: new defs.Triangle(),
-            cone: new defs.Cone_Tip(3, 20, [[0, 1], [0, 1]]), //added this
+            tornado: new defs.Cone_Tip(3, 20, [[0, 1], [0, 1]]),
+            debris1: new defs.Cube(),
+            debris2: new defs.Subdivision_Sphere(1),
+            debris3: new defs.Triangle(),
             rain: new defs.Rounded_Capped_Cylinder(3, 15, [[0, 1], [0, 1]]),
+            wind: new defs.Square(),
 
             bolt: new Line(),
             square: new defs.Cube(),
@@ -97,20 +101,36 @@ export class Project extends Scene {
                 {ambient: 1, diffusivity: 1, specularity: 1, color: hex_color("#c7dcff")}),
             rain: new Material(new defs.Phong_Shader(), 
                 {ambient: 1, diffusivity: 1, specularity: 1, color: hex_color("#ffffff")}),
+            wind: new Material(new defs.Phong_Shader(), 
+                {ambient: 0.5, diffusivity: 0, specularity: 0.3, color: hex_color("#ffffff", 0.3)}),
+            tornado: new Material(new Textured_Phong(), 
+                {ambient: 1, diffusivity: 0, specularity: 0.3, color: hex_color("000000"), texture: new Texture("assets/tornado.png")}),
             cloud: new Material(new defs.Phong_Shader(), 
                 {ambient: 1, diffusivity: 0.2, color: hex_color("#808080")}),
             bolt: new Material(new defs.Basic_Shader(), {color: hex_color("#E8DAEF")}),
+
         };
 
         this.initial_camera_location = Mat4.look_at(vec3(0, 10, 20), vec3(0, 0, 0), vec3(0, 1, 0));
+
+        this.wind = [0, 3];
+
         this.snow_list = [];
         this.rain_list = [];
         this.wind_list = [];
+        this.gust_active = false;
+
+        this.tornado_loc = [-20, -5];
+        this.tornado_dt = 0;
+        this.circle = false;
+
         this.wind = (0, 0, 0, 1);
         this.snow_dt = 0;
         this.rain_dt = 0;
+        this.wind_dt = 0;
+        this.gust_dt = 0;
         this.bolt = null;
-        this.bolt_lines = [new Line(vec3(0,0,0), vec3(0,1,0))];
+        
         this.rot_trigger = 0;
         this.curr_rot = 0;
         this.rot_speed = 0;
@@ -156,12 +176,11 @@ export class Project extends Scene {
             let delta_time = t-element[4];
             let f = 10*Math.sin(Math.PI/10*(delta_time)-Math.PI/2)+5;
 
-            let dx = wind[0]*wind[3]*delta_time; //Math.(wind[0])*wind[1]
-            let dy = wind[1]*wind[3];
-            let dz = wind[2]*wind[3]*delta_time; //Math.cos(wind[0])*wind[1]
+            let dx = Math.cos(wind[0]/180*Math.PI)*wind[1]*delta_time;
+            let dz = Math.sin(wind[0]/180*Math.PI)*wind[1]*delta_time;
 
 
-            let snow_transform = initial_transform.times(Mat4.translation(20*element[0]+dx, 10-f+element[1], 10*element[2]+dz)).times(Mat4.scale(0.1, 0.1, 0.1));
+            let snow_transform = initial_transform.times(Mat4.translation(20*element[0]+dx, 10-f+element[1], 10*element[2]-dz)).times(Mat4.scale(0.1, 0.1, 0.1));
             snow_transform = snow_transform.times(Mat4.rotation(element[3]+f*Math.PI/2, 1, 1, 1));
             this.shapes.snow.draw(context, program_state, snow_transform, this.materials.snow);
             if((10 - f + element[1]) < 0){
@@ -176,7 +195,7 @@ export class Project extends Scene {
                 let y = 3*Math.random();
                 let r = Math.random();
         
-                let snow_transform = initial_transform.times(Mat4.translation(20*x, 10+y, 15*z)).times(Mat4.scale(0.1, 0.1, 0.1)).times(Mat4.rotation(r, 1, 1, 1));
+                let snow_transform = initial_transform.times(Mat4.translation(20*x, 10+y, 10*z)).times(Mat4.scale(0.1, 0.1, 0.1)).times(Mat4.rotation(r, 1, 1, 1));
                 this.snow_list.push(Array(x, y, z, r, t));
                 this.shapes.snow.draw(context, program_state, snow_transform, this.materials.snow);
             }
@@ -186,35 +205,50 @@ export class Project extends Scene {
         
     }
 
-    generate_wind(context, program_state, wind){
-        this.rain_list.forEach((element, index) => {
-            let f = 5*Math.sin(Math.PI/5*(t-element[3])-Math.PI/2)+5;
-            let rain_transform = Mat4.translation(20*element[0], 10-f+element[1], 10*element[2]).times(Mat4.rotation(Math.PI/2-rain_angle, 1, 0, 0));
-            rain_transform = rain_transform.times(Mat4.scale(0.01, 0.01, 0.6));
-            this.shapes.rain.draw(context, program_state, rain_transform, this.materials.rain);
-            if(t - element[3] > 5){
-                this.rain_list.splice(index, 1);
+    generate_wind(context, program_state, initial_transform, t, dt, wind){
+        let x = Math.cos(wind[0]/180*Math.PI);
+        let z = -Math.sin(wind[0]/180*Math.PI);
+
+        let px = Math.cos(wind[0]/180*Math.PI + Math.PI/2);
+        let pz = Math.sin(wind[0]/180*Math.PI + Math.PI/2);
+
+        this.wind_list.forEach((element, index) => {
+            let delta_time = t-element[4];
+
+            let dx = x*delta_time*20;
+            let dz = z*delta_time*20;
+            let dy = Math.sin(element[2])*delta_time*20;
+
+            let wind_transform = initial_transform.times(Mat4.translation((-20+element[3])*x + element[0]*px + dx, 10*element[1]+dy, (20 - element[3])*z - element[0]*pz + dz));
+            wind_transform = wind_transform.times(Mat4.rotation(wind[0], 0, 1, 0));
+            wind_transform = wind_transform.times(Mat4.rotation(2*delta_time, 1, 0, 0)).times(Mat4.scale(2, 0.1, 1));
+            this.shapes.wind.draw(context, program_state, wind_transform, this.materials.rain);
+            
+            if(delta_time > 5){
+                this.wind_list.splice(index, 1);
             }
         });
         
-        if(t%1 < 0.5){
-            if(this.rain_gen){
-                for(let i = 0; i < 80; i++){
-                    let x = -wind[0];
-                    let z = -wind[2];
-                    let d = 2*Math.random()-1;
-                    let w = 2*Math.random()-1;
-                    let y = Math.random();
+        if(this.wind_dt > 3){
+            this.wind_dt = 0;
+            for(let i = 0; i < 3; i++){
+                let w = 2*Math.random()-1;
+                let h = Math.random();
+                let ay = (2*Math.random()-1) * Math.PI/16;
+                let d = 10*Math.random()-5;
         
-                    let wind_transform = Mat4.translation(20*x, 10+y, 15*z).times(Mat4.rotation(0, 1, 0, 0)).times(Mat4.scale(0.02, 0.02, 1));
-                    this.rain_list.push(Array(x, y, z, t));
-                    this.shapes.rain.draw(context, program_state, wind_transform, this.materials.rain);
-                }
-                this.rain_gen = !this.rain_gen;
+                let wind_transform = initial_transform.times(Mat4.translation((20 + d)*x + w*px, 10*h, (20 + d)*z - w*pz)).times(Mat4.rotation(wind[0], 0, 1, 0)).times(Mat4.scale(2, 0.1, 1));
+                this.wind_list.push(Array(w, h, ay, d, t));
+                this.shapes.wind.draw(context, program_state, wind_transform, this.materials.wind);
             }
         } else{
-            this.rain_gen = !this.rain_gen;
+            this.wind_dt += dt;
         }
+
+        if(this.gust_active){
+            this.gust_dt += dt;
+
+        } 
     }
 
     generate_gust(context, program_state){
@@ -222,27 +256,22 @@ export class Project extends Scene {
     }
 
     generate_rain(context, program_state, initial_transform, t, dt, wind){
-        let rain_angle = Math.PI/4*(wind[3]/10);
-
-        //Math.(wind[0])*wind[1]
-        let dy = wind[1]*wind[3];
-        //Math.cos(wind[0])*wind[1]
+        let rain_angle = Math.PI/4*(wind[1]/10);
 
         this.rain_list.forEach((element, index) => {
             let delta_time = t-element[3];
             let f = 10*Math.sin(Math.PI/3*(delta_time)-Math.PI/2)+5;
 
-            let dx = wind[0]*wind[3]*delta_time;
-            let dz = wind[2]*wind[3]*delta_time;
+            let dx = Math.cos(wind[0]/180*Math.PI)*wind[1]*delta_time;
+            let dz = Math.sin(wind[0]/180*Math.PI)*wind[1]*delta_time;
 
-            let rain_transform = initial_transform.times(Mat4.translation(20*element[0]+dx, 10-f+element[1], 10*element[2]+dz)).times(Mat4.rotation(Math.PI/2 - this.calcXZangle(wind), 0, 1, 0));
+            let rain_transform = initial_transform.times(Mat4.translation(20*element[0]+dx, 10-f+element[1], 10*element[2]-dz)).times(Mat4.rotation(Math.PI/2 + wind[0]/180*Math.PI, 0, 1, 0));
             rain_transform = rain_transform.times(Mat4.rotation(Math.PI/2-rain_angle, 1, 0, 0)).times(Mat4.scale(0.01, 0.01, 0.6));
             this.shapes.rain.draw(context, program_state, rain_transform, this.materials.rain);
             if(10-f+element[1] < 0){
                 this.rain_list.splice(index, 1);
             }
         });
-        
         
         if(this.rain_dt > 0.5){
             this.rain_dt = 0;
@@ -251,14 +280,14 @@ export class Project extends Scene {
                 let z = 2*Math.random()-1;
                 let y = 5*Math.random();
         
-                let rain_transform = initial_transform.times(Mat4.translation(20*x, 10+y, 15*z)).times(Mat4.rotation(Math.PI/2-rain_angle, 1, 0, 0)).times(Mat4.scale(0.01, 0.01, 0.6));
+                let rain_transform = initial_transform.times(Mat4.translation(20*x, 10+y, 15*z)).times(Mat4.rotation(Math.PI/2 - wind[0]/180*Math.PI, 0, 1, 0))
+                rain_transform = rain_transform.times(Mat4.rotation(Math.PI/2-rain_angle, 1, 0, 0)).times(Mat4.scale(0.01, 0.01, 0.6));
                 this.rain_list.push(Array(x, y, z, t));
                 this.shapes.rain.draw(context, program_state, rain_transform, this.materials.rain);
             }
         } else{
             this.rain_dt += dt;
         }
-        
     }
 
     generate_cloud(context, program_state, model_transform){
@@ -294,10 +323,11 @@ export class Project extends Scene {
         let z = 0;
 
         bolt_path.push([vec3(xs, ys, z), vec3(xd, yd, z)]);
-        let maxoffset = 2.5;
+        let maxoffset = 3;
         for(let i = 0; i < gen; i++){
-            bolt_path.forEach((element, index) => {
-                bolt_path.splice(index,1);
+            let new_bolt = [];
+            bolt_path.forEach((element) => {
+                
                 let midpt = element[0].plus(element[1]);
                 midpt.scale_by(0.5);
                 let v = element[1].minus(element[0]);
@@ -313,10 +343,10 @@ export class Project extends Scene {
                 midpt = midpt.plus(dv);
                 let ls1 = [element[0], midpt];
                 let ls2 = [midpt, element[1]];
-                bolt_path.push(ls1, ls2);
+                new_bolt.push(ls1, ls2);
 
-                let branch_probability = 0;//Math.random();
-                if(branch_probability > 0.60){
+                let branch_probability = Math.random();
+                if(branch_probability > 0.5){
                     let dir = midpt.minus(element[0]);
                     let length = Math.sqrt(Math.pow(dir[0], 2) + Math.pow(dir[1], 2));
                     let angle = Math.atan(dir[1]/dir[0]);
@@ -326,21 +356,16 @@ export class Project extends Scene {
                     console.log(angle*180/Math.PI);
                     angle += (2*Math.random()-1)*Math.PI/8;
                     let lscaled = length*0.8;
-                    console.log(lscaled);
                     let splitpt = midpt.plus(vec3(Math.cos(angle)*lscaled, Math.sin(angle)*lscaled, 0));
                     
                     let ls3 = [midpt, splitpt];
-                    bolt_path.push(ls3);
-                    console.log(bolt_path);
-                    console.log(ls3);
-                    
+                    new_bolt.push(ls3);
                 }
             });
             maxoffset /= 2;
+            bolt_path = new_bolt;
         }
-        
         this.bolt = bolt_path;
-        
     }
 
     draw_bolt(context, program_state, gen){
@@ -364,24 +389,57 @@ export class Project extends Scene {
             this.shapes.bolt.draw(context, program_state, bolt_translation, this.materials.bolt, "LINES");
         });
         this.shapes.circle.draw(context, program_state, Mat4.identity().times(Mat4.rotation(Math.PI/2, 0,0,1)),this.materials.test);
-        console.log(this.bolt);
     }
 
-    generate_tornado(context, program_state, model_transform, t){
-        let start_transform = model_transform.times(Mat4.rotation(Math.PI/2, 1, 0, 0)).times(Mat4.translation(t, 0, -5)).times(Mat4.rotation(t, 0, 0, 1));
+    tornado_path(dt){
+        let speed = 5;
+       
+        if(!this.circle && this.tornado_loc[1] == -5){
+            if(this.tornado_loc[0] >= 0){
+                this.tornado_loc = [0, -5];
+                this.circle = true;
+            } else{
+                this.tornado_loc[0] += speed*dt;
+            }
+        } else{
+            if(this.tornado_dt > 5){
+                this.tornado_loc[0] += speed*dt;
+            } else {
+                let x = 5*Math.sin(2/5*Math.PI*this.tornado_dt);
+                let z = -5*Math.cos(2/5*Math.PI*this.tornado_dt);
+                this.tornado_loc = [x,z];
+            }
+            this.tornado_dt += dt;
+        }
+        
+    }
+
+    generate_tornado(context, program_state, initial_transform, t, dt){
+        this.tornado_path(dt);
+        let start_transform = initial_transform.times(Mat4.rotation(Math.PI/2, 1, 0, 0)).times(Mat4.translation(this.tornado_loc[0], 0, this.tornado_loc[1])).times(Mat4.rotation(3*t, 0, 0, 1));
         let tornado_transform = start_transform;
         tornado_transform = tornado_transform.times(Mat4.scale(3,3,1));
-        this.shapes.cone.draw(context, program_state, tornado_transform, this.materials.test);
+
+        let debris1_t = start_transform.times(Mat4.translation(0,1,2)).times(Mat4.scale(0.3, 0.3, 0.3)).times(Mat4.rotation(t, 1, 1, 1));
+        this.shapes.debris1.draw(context, program_state, debris1_t, this.materials.test);
+
+        let debris2_t = start_transform.times(Mat4.rotation(2*Math.PI/3, 0,0,1)).times(Mat4.translation(0,2,0)).times(Mat4.scale(0.2, 0.2, 0.2)).times(Mat4.rotation(2*t, 1, 1, 1));
+        this.shapes.debris2.draw(context, program_state, debris2_t, this.materials.test);
+        
+        let debris3_t = start_transform.times(Mat4.rotation(4*Math.PI/3, 0,0,1)).times(Mat4.translation(0,1,5)).times(Mat4.scale(0.5, 0.5, 0.5)).times(Mat4.rotation(2*t, 1, 0, 1));
+        this.shapes.debris3.draw(context, program_state, debris3_t, this.materials.test);
+
+        this.shapes.tornado.draw(context, program_state, tornado_transform, this.materials.tornado);
         for(let i = 0; i < 2; i++){
             tornado_transform = tornado_transform.times(Mat4.scale(0.8, 0.8, 1.5));
             tornado_transform = tornado_transform.times(Mat4.translation(0, 0, 0.3));
-            this.shapes.cone.draw(context, program_state, tornado_transform, this.materials.test);
+            this.shapes.tornado.draw(context, program_state, tornado_transform, this.materials.tornado);
         }
 
         for(let i = 0; i < 4; i++){
             tornado_transform = tornado_transform.times(Mat4.scale(0.65, 0.65, 1.0));
             tornado_transform = tornado_transform.times(Mat4.translation(0, 0, 0.4));
-            this.shapes.cone.draw(context, program_state, tornado_transform, this.materials.test);
+            this.shapes.tornado.draw(context, program_state, tornado_transform, this.materials.tornado);
         }
         tornado_transform = start_transform.times(Mat4.scale(1.5,1.5,1.5)).times(Mat4.translation(0, 0, 5)).times(Mat4.rotation(Math.PI, 0, 1, 0));
 
@@ -393,6 +451,7 @@ export class Project extends Scene {
         }*/
     }
 
+<<<<<<< HEAD
     calcXZangle(wind){
         if(wind[2] == 1){
             return Math.PI/2;
@@ -417,6 +476,7 @@ export class Project extends Scene {
         
     }
     
+
     display(context, program_state) {
         const t = program_state.animation_time / 1000, dt = program_state.animation_delta_time / 1000;
         // display():  Called once per frame of animation.
@@ -430,83 +490,42 @@ export class Project extends Scene {
         program_state.projection_transform = Mat4.perspective(
             Math.PI / 4, context.width / context.height, .1, 1000);
 
-        let sun_rad = 2 + Math.sin((Math.PI/5)*t - (Math.PI/2));
-        let sun_color = 0.5 + 0.5*Math.sin((Math.PI/5)*t - (Math.PI/2));
         let model_transform = Mat4.identity();
-        // TODO: Create Planets (Requirement 1)
-        // this.shapes.[XXX].draw([XXX]) // <--example
-        
         
         
         // TODO: Lighting (Requirement 2)
         const light_position = vec4(0, 40, -95, 1); //0,5,5,1
         // The parameters of the Light are: position, color, size
-        program_state.lights = [new Light(light_position, color(1, 1, 1, 1), 10)];
-
-        // TODO:  Fill in matrix operations and drawing code to draw the solar system scene (Requirements 3 and 4)
-        
-        //model_transform = model_transform.times(Mat4.scale(sun_rad, sun_rad, sun_rad));
-        /*
-        this.shapes.sun.draw(context, program_state, model_transform, this.materials.sun.override({color: color(1, sun_color, sun_color, 1)}));
-
-        let p1_transform = Mat4.identity().times(Mat4.rotation(t/2, 0, 1, 0)).times(Mat4.translation(5, 0, 0));
-        this.shapes.planet_1.draw(context, program_state, p1_transform, this.materials.planet_1);
-        
-        let p2_transform = Mat4.identity().times(Mat4.rotation(t/3, 0, 1, 0)).times(Mat4.translation(8, 0, 0));
-        if(Math.floor(t) % 2 == 0){
-            this.shapes.planet_2.draw(context, program_state, p2_transform, this.materials.planet_2_even);
-        } else {
-            this.shapes.planet_2.draw(context, program_state, p2_transform, this.materials.plane_2_odd);
-        }
-    
-        let p3_transform = Mat4.identity().times(Mat4.rotation(t/4, 0, 1, 0)).times(Mat4.translation(11, 0, 0));
-        this.shapes.planet_3.draw(context, program_state, p3_transform, this.materials.planet_3);
-        let ring_transform = p3_transform.times(Mat4.scale(4,4,4));
-        this.shapes.ring.draw(context, program_state, ring_transform, this.materials.test);
-        
-        let p4_transform = Mat4.identity().times(Mat4.rotation(t/5, 0, 1, 0)).times(Mat4.translation(14, 0, 0));
-        this.shapes.planet_4.draw(context, program_state, p4_transform, this.materials.planet_4);
-        let moon_transform = p4_transform.times(Mat4.rotation(t, 1, 0, 0)).times(Mat4.translation(1, 0, 0));
-        this.shapes.moon.draw(context, program_state, moon_transform, this.materials.moon);
-        */
-        let wind = [1, 0, 0, 5];
-        let rain_angle = Math.PI/4*(wind[3]/10);
-
-        //Math.(wind[0])*wind[1]
-        //Math.cos(wind[0])*wind[1]
-
-       
-           
+        program_state.lights = [new Light(light_position, color(1, 1, 1, 1), 100)];
+  
         let middle = Mat4.translation(27, 0, 35);
+            /*
+        let wind_transform = model_transform.times(Mat4.translation(10*t-20, 0, 0));//.times(Mat4.rotation(Math.PI/8, 0, 0, 1))//.times(Mat4.translation(20*element[0]+dx, 10-f+element[1]+dy, 10*element[2]+dz)).times(Mat4.rotation(Math.PI/2 - wind[0]/180*Math/PI, 0, 1, 0));
+        wind_transform = wind_transform.times(Mat4.rotation(2*t, 1, 0, 0)).times(Mat4.scale(2, 0.1, 1));
+        this.shapes.wind.draw(context, program_state, wind_transform, this.materials.wind);*/
+
+        //this.generate_wind(context, program_state, model_transform, t, dt, [45, 4]);
+
+
         /*
         let rain_transform = Mat4.identity().times(Mat4.rotation(0, 0, 1, 0)); //Math.PI/2-rain_angle
         rain_transform = rain_transform.times(Mat4.rotation(Math.PI/4, 1, 0, 0)).times(Mat4.translation(0, 0, 0)).times(Mat4.scale(0.01, 0.01, 0.6));
         this.shapes.rain.draw(context, program_state, rain_transform, this.materials.rain);
         this.shapes.snow.draw(context, program_state, Mat4.identity(), this.materials.snow);*/
-        //this.generate_snow(context, program_state, middle, t, dt, [1, 0, 0, 1]);
-        //this.generate_rain(context, program_state, middle, t, dt, [1, 0, 0, 10]);
-       //this.generate_tornado(context, program_state, model_transform, t);
+        //this.generate_snow(context, program_state, middle, t, dt, [270, 3]);
+        //this.generate_rain(context, program_state, middle, t, dt, [135, 10]);
+        //this.generate_tornado(context, program_state, model_transform, t, dt);
         //model_transform = model_transform.times(Mat4.rotation(Math.PI/2, 1, 0, 0)).times(Mat4.scale(0.5, 0.5, 1));
         //this.shapes.rain.draw(context, program_state, model_transform, this.materials.rain.override({color: hex_color("#c7e4ee", 1)})); //
         //this.shapes.outline.draw(context, program_state, model_transform, this.materials.rain, "LINES");
         //this.generate_cloud(context, program_state, model_transform);
-        /*
-        if(this.bolt == null){
-            this.gernerate_bolt(context, program_state, Mat4.identity(), 1);
-            this.bolt.forEach((element) => {
-                this.bolt_lines.push(new Line(element[0], element[1]));
-            });
-
-        }*/
-        //console.log(this.bolt_lines);
-        //let trans = Mat4.identity().times(Mat4.translation(0,0,0)).times(Mat4.scale(2,1,1));
+        
+       
         //this.shapes.bolt.draw(context, program_state, Mat4.identity().times(Mat4.rotation(Math.PI/2, 0, 1, 0)), this.materials.bolt);
-        //this.draw_bolt(context, program_state, 4);
+        this.draw_bolt(context, program_state, 5);
         //console.log(this.bolt);
+        
         /*
-        this.bolt_lines.forEach((element) => {
-            element.draw(context, program_state, Mat4.identity(), this.materials.bolt);
-        });*/
         const fan_axis = Mat4.identity().times(Mat4.translation(27,7,35));
 
         this.time_elapsed = t;
@@ -628,7 +647,7 @@ export class Project extends Scene {
         //this.shapes.hill.draw(context, program_state, hill_tran2, this.materials.phong.override({color: grass_green4}));
         this.shapes.floor.draw(context, program_state, this.floor_tran, this.materials.phong.override({color: grass_green2}));
         this.shapes.pond.draw(context, program_state, this.pond_tran, this.materials.phong.override({color: water}));
-    
+        */
     }
 }
 

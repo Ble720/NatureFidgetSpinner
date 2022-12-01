@@ -585,6 +585,14 @@ const Mat4 = tiny.Mat4 =
                 [0, 0, 0, 1]);
         }
 
+        static sheary(x) {
+            // sheary(): Builds and returns a shear matrix in y axis.
+            return Matrix.of([1, x, 0, 0],
+                [0, 1, 0, 0],
+                [0, 0, 1, 0],
+                [0, 0, 0, 1]);
+        }
+
         static translation(x, y, z) {
             // translation(): Builds and returns a translation matrix using x,y,z.
             return Matrix.of([1, 0, 0, x],

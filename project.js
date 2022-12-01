@@ -25,20 +25,24 @@ export class Project extends Scene {
         super();
 
         //Environment
-        this.floor_tran = Mat4.identity();
-        this.floor_tran = this.floor_tran.times(Mat4.translation(0,-10,0));
-        this.floor_tran = this.floor_tran.times(Mat4.rotation(Math.PI*1/2, -1, 0, 0));
-        this.floor_tran = this.floor_tran.times(Mat4.scale(200, 200, 200));
+        this.floor_tran = Mat4.identity().times(Mat4.translation(0,-10,0))
+                                         .times(Mat4.rotation(Math.PI*1/2, -1, 0, 0))
+                                         .times(Mat4.scale(200, 200, 200));
+        this.mtn_tran = Mat4.identity().times(Mat4.rotation(Math.PI*1/2, -1, 0, 0));
 
-        this.night = false
-        this.sky_tran = Mat4.identity().times(Mat4.translation(0, 80, -100)).times(Mat4.scale(200,100,1));
+        this.hill_tran = Mat4.identity().times(Mat4.scale(20, 10, 20));
 
-        this.sun_tran = Mat4.identity().times(Mat4.translation(0, 40, -95)).times(Mat4.scale(25, 25, 1));
+        this.night = false;
+        this.snow = false;
+        this.sky_tran = Mat4.identity().times(Mat4.translation(0, 80, -100))
+                                       .times(Mat4.scale(200,100,1));
 
-        this.pond_tran = Mat4.identity();
-        this.pond_tran = this.pond_tran.times(Mat4.translation(0,-9.5,95));
-        this.pond_tran = this.pond_tran.times(Mat4.rotation(Math.PI*1/2, -1, 0, 0));
-        this.pond_tran = this.pond_tran.times(Mat4.scale(30, 20, 20));
+        this.sun_tran = Mat4.identity().times(Mat4.translation(0, 60, -95))
+                                       .times(Mat4.scale(20, 20, 1));
+
+        this.pond_tran = Mat4.identity().times(Mat4.translation(0,-9.5,80))
+                                        .times(Mat4.rotation(Math.PI*1/2, -1, 0, 0))
+                                        .times(Mat4.scale(10, 10, 1));
 
         // At the beginning of our program, load one of each of these shape definitions onto the GPU.
         this.shapes = {
@@ -86,15 +90,50 @@ export class Project extends Scene {
                 color: hex_color("#000000"),
                 ambient: 1, diffusivity: 0.1, specularity: 0.1,
             }),
-            rock1: new Material(new Textured_Phong(), {
+            snow_rock: new Material(new Textured_Phong(), {
+                color: hex_color("#000000"),
+                ambient: 1, diffusivity: 0.1, specularity: 0.1,
+                texture: new Texture("assets/rock.jpg")
+            }),
+            rock: new Material(new Textured_Phong(), {
                 color: hex_color("#000000"),
                 ambient: 1, diffusivity: 0.1, specularity: 0.1,
                 texture: new Texture("assets/rock3.png")
             }),
-            rock2: new Material(new Textured_Phong(), {
+            pond_text: new Material(new Texture_Scroll_X(), {
                 color: hex_color("#000000"),
                 ambient: 1, diffusivity: 0.1, specularity: 0.1,
-                texture: new Texture("assets/rock2.png")
+                texture: new Texture("assets/pond.jpg")
+            }),
+            night_sky: new Material(new Textured_Phong(), {
+                color: hex_color("#000000"),
+                ambient: 1, diffusivity: 0.1, specularity: 0.1,
+                texture: new Texture("assets/night_sky.jpg")
+            }),
+            moon: new Material(new Textured_Phong(), {
+                color: hex_color("#000000"),
+                ambient: 1, diffusivity: 0.1, specularity: 0.1,
+                texture: new Texture("assets/moon.png")
+            }),
+            grass: new Material(new Textured_Phong(), {
+                color: hex_color("#000000"),
+                ambient: 1, diffusivity: 0.1, specularity: 0.1,
+                texture: new Texture("assets/grass.jpg")
+            }),
+            grass2: new Material(new Textured_Phong(), {
+                color: hex_color("#000000"),
+                ambient: 1, diffusivity: 0.1, specularity: 0.1,
+                texture: new Texture("assets/grass2.jpg")
+            }),
+            snow_grass: new Material(new Textured_Phong(), {
+                color: hex_color("#000000"),
+                ambient: 1, diffusivity: 0.1, specularity: 0.1,
+                texture: new Texture("assets/snow_grass.png")
+            }),
+            night_grass: new Material(new Textured_Phong(), {
+                color: hex_color("#000000"),
+                ambient: 1, diffusivity: 0.1, specularity: 0.1,
+                texture: new Texture("assets/night_grass.png")
             }),
 
             snow: new Material(new defs.Phong_Shader(), 
@@ -149,6 +188,10 @@ export class Project extends Scene {
         this.key_triggered_button("Attach to planet 4", ["Wind Intensity + 1", "w"], () => this.attached = () => this.planet_4);
         this.new_line();
         this.key_triggered_button("Attach to moon", ["Wind Intensity - 1", "m"], () => this.attached = () => this.moon);
+        this.new_line();
+        this.key_triggered_button("Day/Night", ["n"], () => {this.night ^= 1;});
+        this.new_line();
+        this.key_triggered_button("Snow/No Snow", ["n"], () => {this.snow ^= 1;});
     }
 
     windpx(){
@@ -451,7 +494,7 @@ export class Project extends Scene {
         }*/
     }
 
-<<<<<<< HEAD
+
     calcXZangle(wind){
         if(wind[2] == 1){
             return Math.PI/2;
@@ -463,19 +506,83 @@ export class Project extends Scene {
         }
     }
 
-    draw_background(context, program_state, model_transform, night) {
-        //let sky_tran = model_transform;
-        //let sky_hex = hex_color('#87ceeb')
+    draw_sky(context, program_state, night) {
         if (night) {
-            this.shapes.floor.draw(context, program_state, this.sky_tran, this.materials.sky);
-            this.shapes.circle.draw(context, program_state, this.sun_tran, this.materials.sky.override({color: hex_color("#FDB813")}));
+            this.shapes.floor.draw(context, program_state, this.sky_tran, this.materials.night_sky);
+            this.shapes.circle.draw(context, program_state, this.sun_tran, this.materials.moon);
         } else {
             this.shapes.floor.draw(context, program_state, this.sky_tran, this.materials.sky);
             this.shapes.circle.draw(context, program_state, this.sun_tran, this.materials.sky.override({color: hex_color("#FDB813")}));
         }
         
     }
-    
+
+    draw_mtn(context, program_state, x){
+        let mtn_tran1 = this.mtn_tran.times(Mat4.scale(50, 50, 40))
+                                     .times(Mat4.translation(-1+x, 1, 0));
+        let mtn_tran2 = this.mtn_tran.times(Mat4.scale(70, 40, 40))
+                                     .times(Mat4.translation(0+x, 2, 0));
+        let mtn_tran3 = this.mtn_tran.times(Mat4.scale(50, 30, 25))
+                                     .times(Mat4.translation(0.5+x, 1.5, 0));
+        let mtn_tran4 = this.mtn_tran.times(Mat4.scale(30, 30, 40))
+                                     .times(Mat4.translation(2+x, 2.5, 0));
+        let mtn_tran5 = this.mtn_tran.times(Mat4.scale(50, 30, 30))
+                                     .times(Mat4.translation(-1.75+x,2.75, 0));
+        let mtn_tran6 = this.mtn_tran.times(Mat4.scale(50, 30, 40))
+                                     .times(Mat4.translation(1.7+x, 1.5, 0));
+        let mtn_tran7 = this.mtn_tran.times(Mat4.scale(25, 25, 25))
+                                     .times(Mat4.translation(-3.75+x, 2, 0));
+        if (this.snow) {
+            this.shapes.mtn.draw(context, program_state, mtn_tran1, this.materials.snow_rock);
+            this.shapes.mtn.draw(context, program_state, mtn_tran2, this.materials.snow_rock);
+            this.shapes.mtn.draw(context, program_state, mtn_tran3, this.materials.snow_rock);
+            this.shapes.mtn.draw(context, program_state, mtn_tran4, this.materials.snow_rock);
+            this.shapes.mtn.draw(context, program_state, mtn_tran5, this.materials.snow_rock);
+            this.shapes.mtn.draw(context, program_state, mtn_tran6, this.materials.snow_rock);
+            this.shapes.mtn.draw(context, program_state, mtn_tran7, this.materials.snow_rock);
+        } else {
+            this.shapes.mtn.draw(context, program_state, mtn_tran1, this.materials.rock);
+            this.shapes.mtn.draw(context, program_state, mtn_tran2, this.materials.rock);
+            this.shapes.mtn.draw(context, program_state, mtn_tran3, this.materials.rock);
+            this.shapes.mtn.draw(context, program_state, mtn_tran4, this.materials.rock);
+            this.shapes.mtn.draw(context, program_state, mtn_tran5, this.materials.rock);
+            this.shapes.mtn.draw(context, program_state, mtn_tran6, this.materials.rock);
+            this.shapes.mtn.draw(context, program_state, mtn_tran7, this.materials.rock);
+        }
+        
+    }
+
+    draw_floor(context, program_state, snow, night) {
+        const grass_green1 = hex_color('#7CFC00');
+        const grass_green2 = hex_color("#009A17");
+        const grass_green3 = hex_color("#00A619");
+        const grass_green4 = hex_color("#008013");
+        const grass_green5 = hex_color("#09B051");
+        const grass_green6 = hex_color("#59A608");
+
+        if (snow) {
+            let hill_tran1 = this.hill_tran.times(Mat4.translation(-1, -1, 2));
+            //let hill_tran2 = this.hill_tran.times(Mat4.translation(20, 30, -20));
+        
+            //this.shapes.hill.draw(context, program_state, hill_tran1, this.materials.phong.override({color: grass_green4}));
+            //this.shapes.hill.draw(context, program_state, hill_tran2, this.materials.phong.override({color: grass_green4}));
+            this.shapes.floor.draw(context, program_state, this.floor_tran, this.materials.snow_grass);
+        } else if (night) {
+            //let hill_tran1 = this.hill_tran.times(Mat4.translation(-4, -1, 2));
+            //let hill_tran2 = this.hill_tran.times(Mat4.translation(20, 30, -20));
+        
+            //this.shapes.hill.draw(context, program_state, hill_tran1, this.materials.sky.override({color: grass_green4}));
+            //this.shapes.hill.draw(context, program_state, hill_tran2, this.materials.phong.override({color: grass_green4}));
+            this.shapes.floor.draw(context, program_state, this.floor_tran, this.materials.night_grass);
+        } else {
+            //let hill_tran1 = this.hill_tran.times(Mat4.translation(-1, -1, 2));
+            //let hill_tran2 = this.hill_tran.times(Mat4.translation(20, 30, -20));
+        
+            //this.shapes.hill.draw(context, program_state, hill_tran1, this.materials.grass);
+            //this.shapes.hill.draw(context, program_state, hill_tran2, this.materials.phong.override({color: grass_green4}));
+            this.shapes.floor.draw(context, program_state, this.floor_tran, this.materials.grass2);
+        }
+    }
 
     display(context, program_state) {
         const t = program_state.animation_time / 1000, dt = program_state.animation_delta_time / 1000;
@@ -494,7 +601,7 @@ export class Project extends Scene {
         
         
         // TODO: Lighting (Requirement 2)
-        const light_position = vec4(0, 40, -95, 1); //0,5,5,1
+        const light_position = vec4(0, 60, -95, 1); //0,5,5,1
         // The parameters of the Light are: position, color, size
         program_state.lights = [new Light(light_position, color(1, 1, 1, 1), 100)];
   
@@ -607,47 +714,13 @@ export class Project extends Scene {
         //this.shapes.square.draw(context, program_state, staff, this.materials.fan.override({color: hex_color("#65788a")}));
 
         this.shapes.conic.draw(context, program_state, cone_test, this.materials.fan.override({color: hex_color("#65788a")}));
-
-        this.draw_background(context, program_state, this.sky_tran, this.night);
-   
-        const water = hex_color("#83D7EE");
-        const grass_green1 = hex_color('#7CFC00');
-        const grass_green2 = hex_color("#009A17");
-        const grass_green3 = hex_color("#00A619");
-        const grass_green4 = hex_color("#008013");
-        const grass_green5 = hex_color("#09B051");
-        const grass_green6 = hex_color("#59A608");
-
-        let mtn_tran = Mat4.identity();
-        mtn_tran = mtn_tran.times(Mat4.rotation(Math.PI*1/2, -1, 0, 0));
-        mtn_tran = mtn_tran.times(Mat4.scale(20, 20, 10));
-
-        let hill_tran = Mat4.identity();
-        hill_tran = hill_tran.times(Mat4.rotation(Math.PI*1/2, 0, 1, 0));
-        hill_tran = hill_tran.times(Mat4.rotation(Math.PI*1/2, 0, 0, 1));
-        hill_tran = hill_tran.times(Mat4.scale(20, 10, 30));
-        let hill_tran1 = hill_tran.times(Mat4.translation(-1, 3, 1));
-        //let hill_tran2 = hill_tran.times(Mat4.translation(20, 30, -20));
+*/
+        this.draw_sky(context, program_state, this.night);
+        this.draw_floor(context, program_state, this.snow, this.night);
+        this.draw_mtn(context, program_state, -1.5);
+        this.draw_mtn(context, program_state, 0.9);
+        this.shapes.pond.draw(context, program_state, this.pond_tran, this.materials.pond_text);
         
-        let mtn_tran11 = mtn_tran.times(Mat4.translation(-1, 0, 0));
-        let mtn_tran10 = mtn_tran.times(Mat4.translation(0, 1, 0));
-        let mtn_tran9 = mtn_tran.times(Mat4.translation(1, 0, 0));
-        let mtn_tran8 = mtn_tran.times(Mat4.translation(2, 0.5, 0));
-        let mtn_tran7 = mtn_tran.times(Mat4.translation(-2,0.5, 0));
-        let mtn_tran6 = mtn_tran.times(Mat4.translation(3, 0, 0));
-        let mtn_tran5 = mtn_tran.times(Mat4.translation(-3, 0, 0));
-        this.shapes.mtn.draw(context, program_state, mtn_tran11, this.materials.rock1);
-        this.shapes.mtn.draw(context, program_state, mtn_tran10, this.materials.rock2);
-        this.shapes.mtn.draw(context, program_state, mtn_tran9, this.materials.rock1);
-        this.shapes.mtn.draw(context, program_state, mtn_tran8, this.materials.rock2);
-        this.shapes.mtn.draw(context, program_state, mtn_tran7, this.materials.rock1);
-        this.shapes.mtn.draw(context, program_state, mtn_tran6, this.materials.rock2);
-        this.shapes.mtn.draw(context, program_state, mtn_tran5, this.materials.rock2);
-        this.shapes.hill.draw(context, program_state, hill_tran1, this.materials.phong.override({color: grass_green4}));
-        //this.shapes.hill.draw(context, program_state, hill_tran2, this.materials.phong.override({color: grass_green4}));
-        this.shapes.floor.draw(context, program_state, this.floor_tran, this.materials.phong.override({color: grass_green2}));
-        this.shapes.pond.draw(context, program_state, this.pond_tran, this.materials.phong.override({color: water}));
-        */
     }
 }
 
@@ -845,3 +918,22 @@ class Ring_Shader extends Shader {
     }
 }
 
+class Texture_Scroll_X extends Textured_Phong {
+    // TODO:  Modify the shader below (right now it's just the same fragment shader as Textured_Phong) for requirement #6.
+    fragment_glsl_code() {
+        return this.shared_glsl_code() + `
+            varying vec2 f_tex_coord;
+            uniform sampler2D texture;
+            uniform float animation_time;
+            
+            void main(){
+                // Sample the texture image in the correct place:
+                vec4 tex_color = texture2D( texture, f_tex_coord-vec2(mod(2.0*animation_time,3.0), 0.0));
+                if( tex_color.w < .01 ) discard;
+                                                                         // Compute an initial (ambient) color:
+                gl_FragColor = vec4( ( tex_color.xyz + shape_color.xyz ) * ambient, shape_color.w * tex_color.w ); 
+                                                                         // Compute the final color with contributions from lights:
+                gl_FragColor.xyz += phong_model_lights( normalize( N ), vertex_worldspace );
+        } `;
+    }
+}

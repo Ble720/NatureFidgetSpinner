@@ -368,6 +368,7 @@ export class Project extends Scene {
         });
 
         if(this.snow_dt > 0.5 && this.spawn_snow){
+
             for(let i = 0; i < 40; i++){
                 let x = 2*Math.random()-1;
                 let z = 2*Math.random()-1;

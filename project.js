@@ -35,8 +35,8 @@ export class Project extends Scene {
             .times(Mat4.scale(200, 200, 200));
         this.mtn_tran = Mat4.identity().times(Mat4.rotation(Math.PI*1/2, -1, 0, 0));
         
-        this.hill_tran = Mat4.identity().times(Mat4.translation(-60, -10, 30)).times(Mat4.scale(40, 15, 20));
-        this.hill_tran2 = Mat4.identity().times(Mat4.translation(50, -10, 25)).times(Mat4.scale(40, 15, 20));
+        this.hill_tran = Mat4.identity().times(Mat4.translation(-65, -10, 40)).times(Mat4.scale(40, 15, 20));
+        this.hill_tran2 = Mat4.identity().times(Mat4.translation(50, -10, 10)).times(Mat4.scale(40, 15, 20));
 
         this.night = false;
         this.snow = false;
@@ -927,16 +927,32 @@ export class Project extends Scene {
         
         if(!this.spawn_rain && !this.spawn_snow){
             let tr = Mat4.translation(0, -9.9, 65).times(Mat4.rotation(-Math.PI/2, 1, 0, 0)).times(Mat4.scale(0.5, 8, 1));
-            this.shapes.wind.draw(context, program_state, tr, this.materials.wind.override({color: hex_color("000000", 0.1)}));
+            if (this.night){
+                this.shapes.wind.draw(context, program_state, tr, this.materials.wind.override({ambient: 0.2, color: hex_color("3c4925", 1)}));
+            } else {
+                this.shapes.wind.draw(context, program_state, tr, this.materials.wind.override({ambient: 0.5, color: hex_color("3c4925", 1)}));
+            }
 
             let tr2 = Mat4.translation(2*Math.sin(this.wind[0]), -9.9, 75).times(Mat4.rotation(-Math.PI/2, 1, 0, 0)).times(Mat4.scale(9*Math.cos(this.wind[0])+1, 10, 10));
-            this.shapes.circle.draw(context, program_state, tr2, this.materials.wind.override({color: hex_color("000000", 0.1)}));
+            if (this.night) {
+                this.shapes.circle.draw(context, program_state, tr2, this.materials.wind.override({ambient: 0.2, color: hex_color("3c4925", 1)}));
+            } else {
+                this.shapes.circle.draw(context, program_state, tr2, this.materials.wind.override({ambient: 0.5, color: hex_color("3c4925", 1)}));
+            }
 
             let tr3 = Mat4.translation(0, -9.9, 75).times(Mat4.rotation(-Math.PI/2, 1, 0, 0)).times(Mat4.scale(1.5*Math.sin(this.wind[0]), 1, 1));
-            this.shapes.wind.draw(context, program_state, tr3, this.materials.wind.override({color: hex_color("000000", 0.1)}));
+            if (this.night) {
+                this.shapes.wind.draw(context, program_state, tr3, this.materials.wind.override({ambient: 0.2, color: hex_color("3c4925", 1)}));
+            } else {
+                this.shapes.wind.draw(context, program_state, tr3, this.materials.wind.override({ambient: 0.5, color: hex_color("3c4925", 1)}));
+            }
 
             let tr4 = Mat4.translation(0, -9.9, 73).times(Mat4.rotation(-Math.PI/2, 1, 0, 0)).times(Mat4.scale(0.2, 1, 1));
-            this.shapes.wind.draw(context, program_state, tr4, this.materials.wind.override({color: hex_color("000000", 0.1)}));
+            if (this.night) {
+                this.shapes.wind.draw(context, program_state, tr4, this.materials.wind.override({ambient: 0.2, color: hex_color("3c4925", 1)}));
+            } else {
+                this.shapes.wind.draw(context, program_state, tr4, this.materials.wind.override({ambient: 0.5, color: hex_color("3c4925", 1)}));
+            }
         }
         
         /*

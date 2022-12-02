@@ -365,6 +365,7 @@ export class Project extends Scene {
             let snow_transform = initial_transform.times(Mat4.translation(20*element[0]+dx, 10-f+element[1], 10*element[2]-dz)).times(Mat4.scale(0.1, 0.1, 0.1));
             snow_transform = snow_transform.times(Mat4.rotation(element[3]+f*Math.PI/2, 1, 1, 1));
             this.shapes.snow.draw(context, program_state, snow_transform, this.materials.snow);
+            
             if((10 - f + element[1]) < 0){
                 this.snow_list.splice(index, 1);
             }
@@ -911,8 +912,17 @@ export class Project extends Scene {
 
         let tr = Mat4.translation(0, -9.9, 65).times(Mat4.rotation(-Math.PI/2, 1, 0, 0)).times(Mat4.scale(0.5, 8, 1));
         this.shapes.wind.draw(context, program_state, tr, this.materials.wind.override({color: hex_color("000000", 0.1)}));
-        let tr2 = Mat4.translation(0, -9, 75).times(Mat4.rotation(-Math.PI/2, 1, 0, 0)).times(Mat4.scale(10, 10, 10));
+
+        
+
+        let tr2 = Mat4.translation(2*Math.sin(this.wind[0]), -9.9, 75).times(Mat4.rotation(-Math.PI/2, 1, 0, 0)).times(Mat4.scale(9*Math.cos(this.wind[0])+1, 10, 10));
         this.shapes.circle.draw(context, program_state, tr2, this.materials.wind.override({color: hex_color("000000", 0.1)}));
+
+        let tr3 = Mat4.translation(0, -9.9, 75).times(Mat4.rotation(-Math.PI/2, 1, 0, 0)).times(Mat4.scale(1.5*Math.sin(this.wind[0]), 1, 1));
+        this.shapes.wind.draw(context, program_state, tr3, this.materials.wind.override({color: hex_color("000000", 0.1)}));
+
+        let tr4 = Mat4.translation(0, -9.9, 73).times(Mat4.rotation(-Math.PI/2, 1, 0, 0)).times(Mat4.scale(0.2, 1, 1));
+        this.shapes.wind.draw(context, program_state, tr4, this.materials.wind.override({color: hex_color("000000", 0.1)}));
         /*
         let rain_transform = Mat4.identity().times(Mat4.rotation(0, 0, 1, 0)); //Math.PI/2-rain_angle
         rain_transform = rain_transform.times(Mat4.rotation(Math.PI/4, 1, 0, 0)).times(Mat4.translation(0, 0, 0)).times(Mat4.scale(0.01, 0.01, 0.6));

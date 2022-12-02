@@ -15,7 +15,7 @@ class Line extends Shape {
             [0,0,0], [1,0,0]
         ];
 
-        const white = hex_color("#9e35e0");
+        const white = hex_color("#BFB9FA");
         this.arrays.color = Array(2).fill(white);
         this.indices = false;
     }
@@ -172,6 +172,7 @@ export class Project extends Scene {
         this.rain_dt = 0;
         this.wind_dt = 0;
         this.gust_dt = 0;
+        this.intensity_before = -1;
         this.bolt = null;
         this.bolt_dt = 0;
 
@@ -276,6 +277,7 @@ export class Project extends Scene {
         this.new_line();
         this.key_triggered_button("Tornado Spawn", ["0"], () => this.setWeather("tornado"));
         this.key_triggered_button("Lightning Spawn", ["b"], () => this.setWeather("bolt"));
+        this.key_triggered_button("Gust Spawn", ["g"], () => this.gust_active = true);
         this.new_line();
 
         this.key_triggered_button("Day/Night", ["n"], () => {this.night ^= 1;});
@@ -353,8 +355,15 @@ export class Project extends Scene {
 
         if(this.gust_active){
             this.gust_dt += dt;
-
-        }
+            if(this.intensity_before == -1) this.intensity_before = this.wind[1];
+            this.wind[1] = 10;
+            if(this.gust_dt > 3){
+                this.gust_dt = 0;
+                this.gust_active = false;
+                this.wind[1] = this.intensity_before;
+                this.intensity_before = -1;
+            }
+        } 
     }
 
     generate_snow(context, program_state, initial_transform, t, dt, wind){

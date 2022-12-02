@@ -34,7 +34,7 @@ export class Project extends Scene {
             .times(Mat4.rotation(Math.PI*1/2, -1, 0, 0))
             .times(Mat4.scale(200, 200, 200));
         this.mtn_tran = Mat4.identity().times(Mat4.rotation(Math.PI*1/2, -1, 0, 0));
-        
+
         this.hill_tran = Mat4.identity().times(Mat4.translation(-65, -10, 40)).times(Mat4.scale(40, 15, 20));
         this.hill_tran2 = Mat4.identity().times(Mat4.translation(50, -10, 10)).times(Mat4.scale(40, 15, 20));
 
@@ -147,7 +147,7 @@ export class Project extends Scene {
 
         this.initial_camera_location = Mat4.look_at(vec3(0, 1, 120), vec3(0, 0, 60), vec3(0, 1, 0));
 
-        this.wind = [0, 3];
+        this.wind = [0, 5];
 
         //exclusive for windmill
         this.reaction_wind = [0,0];
@@ -258,22 +258,20 @@ export class Project extends Scene {
 
     make_control_panel() {
         // Draw the scene's buttons, setup their actions and keyboard shortcuts, and monitor live measurements.
-        this.live_string(box => box.textContent = "Wind: " + "(" + this.wind[0].toFixed(2) + ","
+        this.live_string(box => box.textContent = "Wind (Angle, Intensity): " + "(" + this.wind[0].toFixed(2) + ","
             +this.wind[1].toFixed(2)+")");
         this.new_line();
-        this.live_string(box => box.textContent = "Reaction wind (debug): " + "("
+        this.live_string(box => box.textContent = "Windmill reaction (Angle, Intensity): " + "("
             + this.reaction_wind[0].toFixed(2) + "," + this.reaction_wind[1].toFixed(2)+")");
         this.new_line();
-        this.live_string(box => box.textContent = "Tornado Loc (debug): " + "("
+        this.live_string(box => box.textContent = "Tornado Location: " + "("
             + this.tornado_loc[0].toFixed(2) + "," + this.tornado_loc[1].toFixed(2)+")");
         this.new_line();
-        this.live_string(box => box.textContent = "state (debug): " + this.state);
+        this.key_triggered_button("wind angle +", ["w"], this.plusAngle);
+        this.key_triggered_button("wind angle -", ["q"], this.minusAngle);
         this.new_line();
-        this.key_triggered_button("wind angle +", ["control","1"], this.plusAngle);
-        this.key_triggered_button("wind angle -", ["control","2"], this.minusAngle);
-        this.new_line();
-        this.key_triggered_button("wind speed +", ["control","3"], this.plusSpd);
-        this.key_triggered_button("wind speed -", ["control","4"], this.minusSpd);
+        this.key_triggered_button("wind speed +", ["s"], this.plusSpd);
+        this.key_triggered_button("wind speed -", ["a"], this.minusSpd);
         this.new_line();
         this.key_triggered_button("Tornado Spawn", ["0"], () => this.setWeather("tornado"));
         this.key_triggered_button("Lightning Spawn", ["b"], () => this.setWeather("bolt"));
@@ -363,7 +361,7 @@ export class Project extends Scene {
                 this.wind[1] = this.intensity_before;
                 this.intensity_before = -1;
             }
-        } 
+        }
     }
 
     generate_snow(context, program_state, initial_transform, t, dt, wind){
@@ -378,7 +376,7 @@ export class Project extends Scene {
             let snow_transform = initial_transform.times(Mat4.translation(20*element[0]+dx, 10-f+element[1], 10*element[2]-dz)).times(Mat4.scale(0.1, 0.1, 0.1));
             snow_transform = snow_transform.times(Mat4.rotation(element[3]+f*Math.PI/2, 1, 1, 1));
             this.shapes.snow.draw(context, program_state, snow_transform, this.materials.snow);
-            
+
             if((10 - f + element[1]) < -10){
                 this.snow_list.splice(index, 1);
             }
@@ -679,11 +677,11 @@ export class Project extends Scene {
         if(this.reaction_wind[1] <= eff_intensity && eff_intensity > 0) //case when wind stronger than windmill response
             this.reaction_wind[1] += Math.max(2*k, k*eff_intensity);
         else{
-                if(this.reaction_wind[1] > -0.1) {
-                    this.reaction_wind[1] -= Math.max(2 * k, k * eff_intensity);
-                    if (eff == 0)
-                        this.reaction_wind[1] -= Math.max(10 * k); //since snow laggy
-                }
+            if(this.reaction_wind[1] > -0.1) {
+                this.reaction_wind[1] -= Math.max(2 * k, k * eff_intensity);
+                if (eff == 0)
+                    this.reaction_wind[1] -= Math.max(10 * k); //since snow laggy
+            }
         }
     }
 
@@ -939,23 +937,73 @@ export class Project extends Scene {
         if(this.wind[1] > 0 && !this.spawn_tornado && !this.spawn_rain && !this.spawn_snow){
             this.generate_wind(context, program_state, middle, t, dt, wind);
         }
-        
+
         if((!this.spawn_rain && !this.spawn_snow) || this.spawn_bolt){
+
             let tr = Mat4.translation(0, -9.9, 65).times(Mat4.rotation(-Math.PI/2, 1, 0, 0)).times(Mat4.scale(0.5, 8, 1));
             if (this.night){
                 this.shapes.wind.draw(context, program_state, tr, this.materials.wind.override({ambient: 0.2, color: hex_color("3c4925", 1)}));
             } else {
                 this.shapes.wind.draw(context, program_state, tr, this.materials.wind.override({ambient: 0.5, color: hex_color("3c4925", 1)}));
             }
+            /*
+                        let tr2 = Mat4.translation(0,-9.9,75)
+                            .times(Mat4.rotation(this.reaction_wind[0]-Math.PI/2, 0, 1, 0))
+                            .times(Mat4.translation(1.5, 0,0))
+                            .times(Mat4.rotation(Math.PI/2, 1,0,0))
+                            .times(Mat4.rotation(-Math.PI/4, 0,1,0))
+                            .times(Mat4.scale(1, 10*Math.sin(this.curr_rot), 10));
+                        */
+            let tr2 = Mat4.translation(0, -9.9, 75)
+                .times(Mat4.rotation(this.reaction_wind[0]-Math.PI/2,0,1,0))
+                .times(Mat4.translation(2,0,0))
+                .times(Mat4.rotation(-Math.PI/2, 1, 0, 0))
+                .times(Mat4.scale(9*Math.cos(this.reaction_wind[0])+1, 10, 10));
 
-            let tr2 = Mat4.translation(2*Math.sin(this.wind[0]), -9.9, 75).times(Mat4.rotation(-Math.PI/2, 1, 0, 0)).times(Mat4.scale(9*Math.cos(this.wind[0])+1, 10, 10));
+            let tr2a = Mat4.translation(0, -9.9, 75)
+                .times(Mat4.rotation(this.reaction_wind[0]-Math.PI/2,0,1,0))
+                .times(Mat4.translation(1.5,0,0))
+                .times(Mat4.rotation(-Math.PI/2, 1, 0, 0))
+                .times(Mat4.rotation(this.curr_rot,0,0,1))
+                .times(Mat4.scale(4.0*Math.abs(Math.cos(this.reaction_wind[0]))+4.0, 0.4*Math.abs(Math.cos(this.reaction_wind[0]))+0.6, 0.1))
+                .times(Mat4.translation(0.5,0,0));
+
+
+            let tr2b = Mat4.translation(0, -9.9, 75)
+                .times(Mat4.rotation(this.reaction_wind[0]-Math.PI/2,0,1,0))
+                .times(Mat4.translation(1.5,0,0))
+                .times(Mat4.rotation(-Math.PI/2, 1, 0, 0))
+                .times(Mat4.rotation(this.curr_rot+2*Math.PI/3,0,0,1))
+                .times(Mat4.scale(4.0*Math.abs(Math.cos(this.reaction_wind[0]))+4.0, 0.4*Math.abs(Math.cos(this.reaction_wind[0]))+0.6, 0.1))
+                .times(Mat4.translation(0.5,0,0));
+
+            let tr2c = Mat4.translation(0, -9.9, 75)
+                .times(Mat4.rotation(this.reaction_wind[0]-Math.PI/2,0,1,0))
+                .times(Mat4.translation(1.5,0,0))
+                .times(Mat4.rotation(-Math.PI/2, 1, 0, 0))
+                .times(Mat4.rotation(this.curr_rot+4*Math.PI/3,0,0,1))
+                .times(Mat4.scale(4.0*Math.abs(Math.cos(this.reaction_wind[0]))+4.0, 0.4*Math.abs(Math.cos(this.reaction_wind[0]))+0.6, 0.1))
+                .times(Mat4.translation(0.5,0,0));
+
             if (this.night) {
-                this.shapes.circle.draw(context, program_state, tr2, this.materials.wind.override({ambient: 0.2, color: hex_color("3c4925", 1)}));
+                this.shapes.triangle.draw(context, program_state, tr2a, this.materials.wind.override({ambient: 0.2, color: hex_color("3c4925", 1)}));
             } else {
-                this.shapes.circle.draw(context, program_state, tr2, this.materials.wind.override({ambient: 0.5, color: hex_color("3c4925", 1)}));
+                this.shapes.triangle.draw(context, program_state, tr2a, this.materials.wind.override({ambient: 0.5, color: hex_color("3c4925", 1)}));
             }
 
-            let tr3 = Mat4.translation(0, -9.9, 75).times(Mat4.rotation(-Math.PI/2, 1, 0, 0)).times(Mat4.scale(1.5*Math.sin(this.wind[0]), 1, 1));
+            if (this.night) {
+                this.shapes.triangle.draw(context, program_state, tr2b, this.materials.wind.override({ambient: 0.2, color: hex_color("3c4925", 1)}));
+            } else {
+                this.shapes.triangle.draw(context, program_state, tr2b, this.materials.wind.override({ambient: 0.5, color: hex_color("3c4925", 1)}));
+            }
+
+            if (this.night) {
+                this.shapes.triangle.draw(context, program_state, tr2c, this.materials.wind.override({ambient: 0.2, color: hex_color("3c4925", 1)}));
+            } else {
+                this.shapes.triangle.draw(context, program_state, tr2c, this.materials.wind.override({ambient: 0.5, color: hex_color("3c4925", 1)}));
+            }
+
+            let tr3 = Mat4.translation(0, -9.9, 75).times(Mat4.rotation(-Math.PI/2, 1, 0, 0)).times(Mat4.scale(1.4-0.5*Math.abs(Math.cos(this.reaction_wind[0])), 1.5, 1));
             if (this.night) {
                 this.shapes.wind.draw(context, program_state, tr3, this.materials.wind.override({ambient: 0.2, color: hex_color("3c4925", 1)}));
             } else {
@@ -969,7 +1017,7 @@ export class Project extends Scene {
                 this.shapes.wind.draw(context, program_state, tr4, this.materials.wind.override({ambient: 0.5, color: hex_color("3c4925", 1)}));
             }
         }
-        
+
         /*
         let rain_transform = Mat4.identity().times(Mat4.rotation(0, 0, 1, 0)); //Math.PI/2-rain_angle
         rain_transform = rain_transform.times(Mat4.rotation(Math.PI/4, 1, 0, 0)).times(Mat4.translation(0, 0, 0)).times(Mat4.scale(0.01, 0.01, 0.6));

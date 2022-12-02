@@ -34,6 +34,9 @@ export class Project extends Scene {
             .times(Mat4.rotation(Math.PI*1/2, -1, 0, 0))
             .times(Mat4.scale(200, 200, 200));
         this.mtn_tran = Mat4.identity().times(Mat4.rotation(Math.PI*1/2, -1, 0, 0));
+        
+        this.hill_tran = Mat4.identity().times(Mat4.translation(-60, -10, 30)).times(Mat4.scale(40, 15, 20));
+        this.hill_tran2 = Mat4.identity().times(Mat4.translation(50, -10, 25)).times(Mat4.scale(40, 15, 20));
 
         this.night = false;
         this.snow = false;
@@ -752,17 +755,25 @@ export class Project extends Scene {
             if(this.night){
                 this.shapes.pond.draw(context, program_state, this.pond_tran, this.materials.pond.override({ ambient: 0.7 }));
                 this.shapes.floor.draw(context, program_state, this.floor_tran, this.materials.snow_grass.override({ ambient: 0.85}));
+                this.shapes.sphere.draw(context, program_state, this.hill_tran, this.materials.snow_grass.override({ ambient: 0.9}));
+                this.shapes.sphere.draw(context, program_state, this.hill_tran2, this.materials.snow_grass.override({ ambient: 0.9}));
             } else {
                 this.shapes.pond.draw(context, program_state, this.pond_tran, this.materials.pond);
                 this.shapes.floor.draw(context, program_state, this.floor_tran, this.materials.snow_grass);
+                this.shapes.sphere.draw(context, program_state, this.hill_tran, this.materials.snow_grass);
+                this.shapes.sphere.draw(context, program_state, this.hill_tran2, this.materials.snow_grass);
             }
         } else {
             if(this.night){
                 this.shapes.pond.draw(context, program_state, this.pond_tran, this.materials.pond.override({ ambient: 0.7 }));
                 this.shapes.floor.draw(context, program_state, this.floor_tran, this.materials.grass.override({ ambient: 0.6}));
+                this.shapes.sphere.draw(context, program_state, this.hill_tran, this.materials.grass.override({ ambient: 0.65}));
+                this.shapes.sphere.draw(context, program_state, this.hill_tran2, this.materials.grass.override({ ambient: 0.65}));
             } else {
                 this.shapes.floor.draw(context, program_state, this.floor_tran, this.materials.grass);
                 this.shapes.pond.draw(context, program_state, this.pond_tran, this.materials.pond);
+                this.shapes.sphere.draw(context, program_state, this.hill_tran, this.materials.grass);
+                this.shapes.sphere.draw(context, program_state, this.hill_tran2, this.materials.grass);
             }
         }
     }

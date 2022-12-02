@@ -63,7 +63,7 @@ export class Project extends Scene {
             square: new defs.Cube(),
             triangle: new defs.Rounded_Capped_Cylinder(10,3),
             cylinder: new defs.Rounded_Capped_Cylinder(10,40),
-            conic: new defs.Closed_Cone(10,6),
+            conic: new defs.Closed_Cone(100,4),
 
             mtn:  new defs.Rounded_Closed_Cone(5,5),
             floor: new defs.Square(100, 100),
@@ -168,6 +168,12 @@ export class Project extends Scene {
         this.gust_dt = 0;
         this.bolt = null;
 
+        //time elapsed in general
+        this.time_elapsed = 0;
+
+        //time elapsed after weather event
+        this.time_after_weather = 0;
+
         //debug
         this.state = 1;
 
@@ -261,15 +267,20 @@ export class Project extends Scene {
         this.key_triggered_button("wind speed +", ["control","3"], this.plusSpd);
         this.key_triggered_button("wind speed -", ["control","4"], this.minusSpd);
         this.new_line();
-        this.key_triggered_button("model hurricane", ["Control", "5"], this.tornado);
         this.key_triggered_button("Tornado Spawn", ["0"], () => this.setWeather("tornado"));
         this.key_triggered_button("Lightning Spawn", ["1"], () => this.setWeather("bolt"));
         this.new_line();
 
         this.key_triggered_button("Day/Night", ["n"], () => {this.night ^= 1;});
         this.new_line();
-        this.key_triggered_button("Toggle Snow", ["o"], () => this.setWeather("snow"));
-        this.key_triggered_button("Toggle Rain", ["p"], () => this.setWeather("rain"));
+        this.key_triggered_button("Toggle Snow", ["o"], () => {
+            this.setWeather("snow")
+            this.time_after_weather = this.time_elapsed;
+        });
+        this.key_triggered_button("Toggle Rain", ["p"], () => {
+            this.setWeather("rain")
+            this.time_after_weather = this.time_elapsed;
+        });
     }
 
     setWeather(w){
@@ -296,7 +307,7 @@ export class Project extends Scene {
                 this.spawn_tornado = true;
                 this.spawn_rain = false;
                 this.spawn_snow = false;
-            }   
+            }
         } else if(w == "bolt"){
             if(!this.spawn_tornado && !this.spawn_bolt){
                 this.spawn_bolt = true;
@@ -304,7 +315,7 @@ export class Project extends Scene {
             }
         }
     }
-    
+
     generate_wind(context, program_state, initial_transform, t, dt, wind){
         let x = Math.cos(wind[0]/180*Math.PI);
         let z = -Math.sin(wind[0]/180*Math.PI);
@@ -571,7 +582,7 @@ export class Project extends Scene {
         let fan_axis = windmill_pos.times(Mat4.translation(0,0,-2))
             .times(Mat4.rotation(this.reaction_wind[0],0,1,0));
 
-        this.curr_rot = this.curr_rot + this.reaction_wind[1]/20;
+        this.curr_rot = this.curr_rot + Math.max(this.reaction_wind[1],0)/20;
         let fan1 = fan_axis.times(Mat4.translation(0,0,2))
             .times(Mat4.rotation(this.curr_rot, 0, 0, 1))
             .times(Mat4.rotation(-0.8,1,0,0))
@@ -590,9 +601,27 @@ export class Project extends Scene {
             .times(Mat4.scale(6,0.5,0.1))
             .times(Mat4.translation(0.97, 0, 0));
 
+        let fan1a = fan_axis.times(Mat4.translation(0,0,2))
+            .times(Mat4.rotation(Math.PI/2,0,1,0))
+            .times(Mat4.rotation(this.curr_rot, -1, 0, 0))
+            .times(Mat4.scale(0.5,1,7))
+            .times(Mat4.translation(0,0,0.95));
+
+        let fan2a = fan_axis.times(Mat4.translation(0,0,2))
+            .times(Mat4.rotation(Math.PI/2,0,1,0))
+            .times(Mat4.rotation(this.curr_rot+2*Math.PI/3, -1, 0, 0))
+            .times(Mat4.scale(0.5,1,7))
+            .times(Mat4.translation(0,0,0.95));
+
+        let fan3a = fan_axis.times(Mat4.translation(0,0,2))
+            .times(Mat4.rotation(Math.PI/2,0,1,0))
+            .times(Mat4.rotation(this.curr_rot+4*Math.PI/3, -1, 0, 0))
+            .times(Mat4.scale(0.5,1,7))
+            .times(Mat4.translation(0,0,0.95));
+
         let triangle_transform = fan_axis.times(Mat4.translation(0,0,2))
             .times(Mat4.rotation(this.curr_rot + Math.PI/3, 0,0,1))
-            .times(Mat4.scale(0.9,0.9,1.1));
+            .times(Mat4.scale(1.8, 1.8,1.5));
 
         let circular_axis = fan_axis.times(Mat4.translation(0,0,1))
             .times(Mat4.scale(0.2,0.2,1));
@@ -610,9 +639,9 @@ export class Project extends Scene {
 
 
         this.shapes.triangle.draw(context, program_state, triangle_transform, this.materials.glue);
-        this.shapes.square.draw(context, program_state, fan1, this.materials.fan.override({color: color(0.3,0.8,0.5,1)}));
-        this.shapes.square.draw(context, program_state, fan2, this.materials.fan.override({color: color(0.3,0.5,0.8,1)}));
-        this.shapes.square.draw(context, program_state, fan3, this.materials.fan.override({color: color(0.8,0.5,0.3,1)}));
+        this.shapes.conic.draw(context, program_state, fan1a, this.materials.fan.override({color: color(0.3,0.8,0.5,1)}));
+        this.shapes.conic.draw(context, program_state, fan2a, this.materials.fan.override({color: color(0.3,0.5,0.8,1)}));
+        this.shapes.conic.draw(context, program_state, fan3a, this.materials.fan.override({color: color(0.8,0.5,0.3,1)}));
         this.shapes.cylinder.draw(context, program_state, circular_axis, this.materials.glue.override({color: color(0.3,0.3,0.3,1)}));
         this.shapes.square.draw(context, program_state, staff1, this.materials.glue.override({color: hex_color("#cccccc")}));
         this.shapes.cylinder.draw(context, program_state, staff2, this.materials.glue.override({color: hex_color("#aaaaaa")}));
@@ -620,30 +649,34 @@ export class Project extends Scene {
     }
 
     //how fan respond to changing intensity
-    fan_response(k){
+    fan_response(k, eff){
+        let eff_intensity = eff*this.wind[1];
         //modelling fan rotation in its plane
-        if(this.reaction_wind[1] + k*10 < this.wind[1]) //case when wind stronger than windmill response
-            this.reaction_wind[1] += Math.max(2*k, k*this.wind[1]);
+        if(this.reaction_wind[1] <= eff_intensity && eff_intensity > 0) //case when wind stronger than windmill response
+            this.reaction_wind[1] += Math.max(2*k, k*eff_intensity);
         else{
-            if(this.reaction_wind[1] - k*10 > this.wind[1]) //case when wind slower than windmill and nonzero
-                this.reaction_wind[1] -= Math.max(2*k, k*this.wind[1]);
-            else if(this.wind[1] == 0)//case when wind is 0 and windmill already very slow, means we stop it
-                this.reaction_wind[1] = 0;
+                if(this.reaction_wind[1] > -0.1) {
+                    this.reaction_wind[1] -= Math.max(2 * k, k * eff_intensity);
+                    if (eff == 0)
+                        this.reaction_wind[1] -= Math.max(10 * k); //since snow laggy
+                }
         }
     }
 
     //how windmill respond to changing direction
-    body_response(k){
+    body_response(k, eff){
+        this.refine_wind();
+        let eff_intensity = eff*this.wind[1];
         //modelling windmill body rotation
         if(this.reaction_wind[0] > this.wind[0] + k*10 || this.reaction_wind[0] < this.wind[0] - k*10) {
             //Some math to determine which direction to rotate to align
             //case 1: rotate clockwise to align with wind
-            if ((this.wind[0] > this.reaction_wind[0] && this.wind[0] - this.reaction_wind[0] < Math.PI) || (this.reaction_wind[1] - this.wind[1] > Math.PI)) {
-                this.reaction_wind[0] += k * this.wind[1];
+            if ((this.wind[0] > this.reaction_wind[0] && this.wind[0] - this.reaction_wind[0] < Math.PI) || (this.reaction_wind[0] - this.wind[0] > Math.PI)) {
+                this.reaction_wind[0] += k * eff_intensity;
                 this.refine_reaction();
             }
             else {
-                this.reaction_wind[0] -= k * this.wind[1];
+                this.reaction_wind[0] -= k * eff_intensity;
                 this.refine_reaction();
             }
         }
@@ -794,11 +827,37 @@ export class Project extends Scene {
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     }*/
 
+    follow_tornado(){
+        this.wind[1] = 200/(Math.sqrt((this.tornado_loc[0])**2 + (this.tornado_loc[1]-60)**2)); //maybe 100/dist(windmill, tornado)
+        let dist = Math.sqrt(this.tornado_loc[0]**2+(this.tornado_loc[1]-60)**2);
+        if((this.tornado_loc[1]-60) < 0){ //means angle btwn 90, 270
+            if(this.tornado_loc[0] > 0){
+                this.wind[0] = Math.PI-Math.asin(Math.abs(this.tornado_loc[0])/dist);
+                this.state = 1;
+            }
+            else{
+                this.wind[0] = Math.PI+Math.asin(Math.abs(this.tornado_loc[0])/dist);
+                this.state = 0;
+            }
+        }
+        else{ //means angle 0-90 and 270-360
+            if(this.tornado_loc[0] > 0){
+                this.wind[0] = Math.asin(Math.abs(this.tornado_loc[0])/dist);
+                this.state = 2;
+            }
+            else{
+                this.wind[0] = 2*Math.PI-Math.asin(Math.abs(this.tornado_loc[0])/dist);
+                this.state = 3;
+            }
+        }
+    }
+
 
 
     display(context, program_state) {
 
         const t = program_state.animation_time / 1000, dt = program_state.animation_delta_time / 1000;
+        this.time_elapsed = t;
         const gl = context.context;
 
         /*if (!this.init_ok) {
@@ -822,7 +881,6 @@ export class Project extends Scene {
             Math.PI / 4, context.width / context.height, .1, 1000);
 
         let model_transform = Mat4.identity();
-
 
         const light_position = vec4(0, 60, -95, 1); //0,5,5,1
         // The parameters of the Light are: position, color, size
@@ -852,7 +910,7 @@ export class Project extends Scene {
         rain_transform = rain_transform.times(Mat4.rotation(Math.PI/4, 1, 0, 0)).times(Mat4.translation(0, 0, 0)).times(Mat4.scale(0.01, 0.01, 0.6));
         this.shapes.rain.draw(context, program_state, rain_transform, this.materials.rain);
         this.shapes.snow.draw(context, program_state, Mat4.identity(), this.materials.snow);*/
-        
+
 
         //model_transform = model_transform.times(Mat4.rotation(Math.PI/2, 1, 0, 0)).times(Mat4.scale(0.5, 0.5, 1));
         //this.shapes.rain.draw(context, program_state, model_transform, this.materials.rain.override({color: hex_color("#c7e4ee", 1)})); //
@@ -937,36 +995,21 @@ export class Project extends Scene {
 
         //what happen to wind if tornado, depend on tornado position only. WIP (will depend on x,y)
         if(this.spawn_tornado){
-            this.wind[1] = 100/(Math.sqrt((this.tornado_loc[0])**2 + (this.tornado_loc[1]-60)**2)); //maybe 100/dist(windmill, tornado)
-            let dist = Math.sqrt(this.tornado_loc[0]**2+(this.tornado_loc[1]-60)**2);
-            if((this.tornado_loc[1]-60) < 0){ //means angle btwn 90, 270
-                if(this.tornado_loc[0] > 0){
-                    this.wind[0] = Math.PI-Math.asin(Math.abs(this.tornado_loc[0])/dist);
-                    this.state = 1;
-                }
-                else{
-                    this.wind[0] = Math.PI+Math.asin(Math.abs(this.tornado_loc[0])/dist);
-                    this.state = 0;
-                }
-            }
-            else{ //means angle 0-90 and 270-360
-                if(this.tornado_loc[0] > 0){
-                    this.wind[0] = Math.asin(Math.abs(this.tornado_loc[0])/dist);
-                    this.state = 2;
-                }
-                else{
-                    this.wind[0] = 2*Math.PI-Math.asin(Math.abs(this.tornado_loc[0])/dist);
-                    this.state = 3;
-                }
-            }
+            this.follow_tornado();
         }
 
-        this.refine_wind();
-
+        let intensity = 1;
         //k is how responsive the fan/body is to the wind intensity
-        this.fan_response(0.005);
-        if(this.wind[1] > 0)
-            this.body_response(0.005);
+        if(this.spawn_snow)
+            intensity = 0
+        else if(this.spawn_rain)
+            intensity = 0.7
+        else
+            intensity = 1;
+
+        this.fan_response(0.002, intensity);
+        if (this.wind[1] > 0)
+            this.body_response(0.002, intensity);
 
         //specify the positions then draw the windmill, straightforward code
         this.draw_windmill(position, context, program_state);

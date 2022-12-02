@@ -904,7 +904,7 @@ export class Project extends Scene {
         this.generate_snow(context, program_state, middle, t, dt, this.wind);
         this.generate_rain(context, program_state, middle, t, dt, this.wind);
 
-        if(this.wind[1] > 0){
+        if(this.wind[1] > 0 && !this.spawn_tornado){
             this.generate_wind(context, program_state, middle, t, dt, [this.wind[0]+Math.PI/2, this.wind[1]]);
         }
         

@@ -5,8 +5,8 @@ const {
 } = tiny;
 const {Textured_Phong} = defs;
 
-/*import {Color_Phong_Shader, Shadow_Textured_Phong_Shader, 
-        Depth_Texture_Shader_2D, Buffered_Texture, LIGHT_DEPTH_TEX_SIZE} from './shadow-demo-shaders.js'*/
+import {Color_Phong_Shader, Shadow_Textured_Phong_Shader, 
+        Depth_Texture_Shader_2D, Buffered_Texture, LIGHT_DEPTH_TEX_SIZE} from './shadow-demo-shaders.js'
 
 class Line extends Shape {
     constructor() {
@@ -84,9 +84,9 @@ export class Project extends Scene {
             // TODO:  Fill in as many additional material objects as needed in this key/value table.
             //        (Requirement 4)
             glue: new Material(new defs.Phong_Shader(),
-                {ambient: .2, diffusivity: .6, color: hex_color("#ffffff")}),
+                {ambient: .2, diffusivity: .6, color: hex_color("#ffffff"), light_depth_texture: null}),
             fan: new Material(new defs.Phong_Shader(),
-                {ambient: .2, diffusivity: .6, color: hex_color("#ffffff")}),
+                {ambient: .2, diffusivity: .6, color: hex_color("#ffffff"), light_depth_texture: null}),
 
             phong: new Material(new Textured_Phong(), {
                 color: hex_color("#000000"),
@@ -117,15 +117,26 @@ export class Project extends Scene {
                 ambient: 1, diffusivity: 0.1, specularity: 0.1,
                 texture: new Texture("assets/moon.png")
             }),
-            grass: new Material(new Textured_Phong(), {
+            grass: new Material(new Shadow_Textured_Phong_Shader(), {
                 color: hex_color("#000000"),
                 ambient: 1, diffusivity: 0.1, specularity: 0.1,
-                texture: new Texture("assets/grass.png")
+                texture: new Texture("assets/grass.png"),
+                light_depth_texture: null
             }),
-            snow_grass: new Material(new Textured_Phong(), {
+            snow_grass: new Material(new Shadow_Textured_Phong_Shader(), {
                 color: hex_color("#000000"),
                 ambient: 1, diffusivity: 0.1, specularity: 0.1,
-                texture: new Texture("assets/snow_grass.png")
+                texture: new Texture("assets/snow_grass.png"),
+                light_depth_texture: null
+            }),
+            //for the first pass
+            pure: new Material(new Color_Phong_Shader(), {
+            }),
+            // For depth texture display
+            depth_tex: new Material(new Depth_Texture_Shader_2D(), {
+                color: color(0, 0, .0, 1),
+                ambient: 1, diffusivity: 0, specularity: 0, 
+                texture: null
             }),
 
             snow: new Material(new defs.Phong_Shader(), 
@@ -533,7 +544,7 @@ export class Project extends Scene {
     }
 
     //windmill draw out
-    draw_windmill(windmill_pos, context, program_state){
+    draw_windmill(windmill_pos, context, program_state, shadow_pass){
         let fan_axis = windmill_pos.times(Mat4.translation(0,0,-2))
             .times(Mat4.rotation(this.reaction_wind[1],0,1,0));
 
@@ -575,14 +586,14 @@ export class Project extends Scene {
             .times(Mat4.scale(0.5,0.5,16));
 
 
-        this.shapes.triangle.draw(context, program_state, triangle_transform, this.materials.glue);
-        this.shapes.square.draw(context, program_state, fan1, this.materials.fan.override({color: color(0.3,0.8,0.5,1)}));
-        this.shapes.square.draw(context, program_state, fan2, this.materials.fan.override({color: color(0.3,0.5,0.8,1)}));
-        this.shapes.square.draw(context, program_state, fan3, this.materials.fan.override({color: color(0.8,0.5,0.3,1)}));
-        this.shapes.cylinder.draw(context, program_state, circular_axis, this.materials.glue.override({color: color(0.3,0.3,0.3,1)}));
-        this.shapes.square.draw(context, program_state, staff1, this.materials.glue.override({color: hex_color("#cccccc")}));
-        this.shapes.cylinder.draw(context, program_state, staff2, this.materials.glue.override({color: hex_color("#aaaaaa")}));
-        this.shapes.cylinder.draw(context, program_state, staff3, this.materials.glue.override({color: hex_color("#65788a")}));
+        this.shapes.triangle.draw(context, program_state, triangle_transform, shadow_pass ? this.materials.glue : this.pure);
+        this.shapes.square.draw(context, program_state, fan1, shadow_pass ? this.materials.fan.override({color: color(0.3,0.8,0.5,1)}) : this.pure);
+        this.shapes.square.draw(context, program_state, fan2, shadow_pass ? this.materials.fan.override({color: color(0.3,0.5,0.8,1)}) : this.pure);
+        this.shapes.square.draw(context, program_state, fan3, shadow_pass ? this.materials.fan.override({color: color(0.8,0.5,0.3,1)}) : this.pure);
+        this.shapes.cylinder.draw(context, program_state, circular_axis, shadow_pass ? this.materials.glue.override({color: color(0.3,0.3,0.3,1)}) : this.pure);
+        this.shapes.square.draw(context, program_state, staff1, shadow_pass ? this.materials.glue.override({color: hex_color("#cccccc")}) : this.pure);
+        this.shapes.cylinder.draw(context, program_state, staff2, shadow_pass ? this.materials.glue.override({color: hex_color("#aaaaaa")}) : this. pure);
+        this.shapes.cylinder.draw(context, program_state, staff3, shadow_pass ? this.materials.glue.override({color: hex_color("#65788a")}) : this.pure);
     }
 
     //how fan respond to changing intensity
@@ -615,7 +626,7 @@ export class Project extends Scene {
         }
     }//end of body ref function
 
-    draw_mtn(context, program_state, x){
+    draw_mtn(context, program_state, x, shadow_pass){
         let mtn_tran1 = this.mtn_tran.times(Mat4.scale(50, 50, 40))
                                      .times(Mat4.translation(-1+x, 1, 0));
         let mtn_tran2 = this.mtn_tran.times(Mat4.scale(70, 40, 40))
@@ -632,46 +643,46 @@ export class Project extends Scene {
                                      .times(Mat4.translation(-3.75+x, 2, 0));
         if (this.snow) {
             if(this.night){
-                this.shapes.mtn.draw(context, program_state, mtn_tran1, this.materials.snow_rock.override({ ambient: 0.7}));
-                this.shapes.mtn.draw(context, program_state, mtn_tran2, this.materials.snow_rock.override({ ambient: 0.7}));
-                this.shapes.mtn.draw(context, program_state, mtn_tran3, this.materials.snow_rock.override({ ambient: 0.7}));
-                this.shapes.mtn.draw(context, program_state, mtn_tran4, this.materials.snow_rock.override({ ambient: 0.7}));
-                this.shapes.mtn.draw(context, program_state, mtn_tran5, this.materials.snow_rock.override({ ambient: 0.7}));
-                this.shapes.mtn.draw(context, program_state, mtn_tran6, this.materials.snow_rock.override({ ambient: 0.7}));
-                this.shapes.mtn.draw(context, program_state, mtn_tran7, this.materials.snow_rock.override({ ambient: 0.7}));
+                this.shapes.mtn.draw(context, program_state, mtn_tran1, shadow_pass ? this.materials.snow_rock.override({ ambient: 0.7}) : this.pure);
+                this.shapes.mtn.draw(context, program_state, mtn_tran2, shadow_pass ? this.materials.snow_rock.override({ ambient: 0.7}) : this.pure);
+                this.shapes.mtn.draw(context, program_state, mtn_tran3, shadow_pass ? this.materials.snow_rock.override({ ambient: 0.7}) : this.pure);
+                this.shapes.mtn.draw(context, program_state, mtn_tran4, shadow_pass ? this.materials.snow_rock.override({ ambient: 0.7}) : this.pure);
+                this.shapes.mtn.draw(context, program_state, mtn_tran5, shadow_pass ? this.materials.snow_rock.override({ ambient: 0.7}) : this.pure);
+                this.shapes.mtn.draw(context, program_state, mtn_tran6, shadow_pass ? this.materials.snow_rock.override({ ambient: 0.7}) : this.pure);
+                this.shapes.mtn.draw(context, program_state, mtn_tran7, shadow_pass ? this.materials.snow_rock.override({ ambient: 0.7}) : this.pure);
             } else {
-                this.shapes.mtn.draw(context, program_state, mtn_tran1, this.materials.snow_rock);
-                this.shapes.mtn.draw(context, program_state, mtn_tran2, this.materials.snow_rock);
-                this.shapes.mtn.draw(context, program_state, mtn_tran3, this.materials.snow_rock);
-                this.shapes.mtn.draw(context, program_state, mtn_tran4, this.materials.snow_rock);
-                this.shapes.mtn.draw(context, program_state, mtn_tran5, this.materials.snow_rock);
-                this.shapes.mtn.draw(context, program_state, mtn_tran6, this.materials.snow_rock);
-                this.shapes.mtn.draw(context, program_state, mtn_tran7, this.materials.snow_rock);
+                this.shapes.mtn.draw(context, program_state, mtn_tran1, shadow_pass ? this.materials.snow_rock : this.pure);
+                this.shapes.mtn.draw(context, program_state, mtn_tran2, shadow_pass ? this.materials.snow_rock : this.pure);
+                this.shapes.mtn.draw(context, program_state, mtn_tran3, shadow_pass ? this.materials.snow_rock : this.pure);
+                this.shapes.mtn.draw(context, program_state, mtn_tran4, shadow_pass ? this.materials.snow_rock : this.pure);
+                this.shapes.mtn.draw(context, program_state, mtn_tran5, shadow_pass ? this.materials.snow_rock : this.pure);
+                this.shapes.mtn.draw(context, program_state, mtn_tran6, shadow_pass ? this.materials.snow_rock : this.pure);
+                this.shapes.mtn.draw(context, program_state, mtn_tran7, shadow_pass ? this.materials.snow_rock : this.pure);
             }
         } else {
             if(this.night){
-                this.shapes.mtn.draw(context, program_state, mtn_tran1, this.materials.rock.override({ ambient: 0.7}));
-                this.shapes.mtn.draw(context, program_state, mtn_tran2, this.materials.rock.override({ ambient: 0.7}));
-                this.shapes.mtn.draw(context, program_state, mtn_tran3, this.materials.rock.override({ ambient: 0.7}));
-                this.shapes.mtn.draw(context, program_state, mtn_tran4, this.materials.rock.override({ ambient: 0.7}));
-                this.shapes.mtn.draw(context, program_state, mtn_tran5, this.materials.rock.override({ ambient: 0.7}));
-                this.shapes.mtn.draw(context, program_state, mtn_tran6, this.materials.rock.override({ ambient: 0.7}));
-                this.shapes.mtn.draw(context, program_state, mtn_tran7, this.materials.rock.override({ ambient: 0.7}));
+                this.shapes.mtn.draw(context, program_state, mtn_tran1, shadow_pass ? this.materials.rock.override({ ambient: 0.7}) : this.pure);
+                this.shapes.mtn.draw(context, program_state, mtn_tran2, shadow_pass ? this.materials.rock.override({ ambient: 0.7}) : this.pure);
+                this.shapes.mtn.draw(context, program_state, mtn_tran3, shadow_pass ? this.materials.rock.override({ ambient: 0.7}) : this.pure);
+                this.shapes.mtn.draw(context, program_state, mtn_tran4, shadow_pass ? this.materials.rock.override({ ambient: 0.7}) : this.pure);
+                this.shapes.mtn.draw(context, program_state, mtn_tran5, shadow_pass ? this.materials.rock.override({ ambient: 0.7}) : this.pure);
+                this.shapes.mtn.draw(context, program_state, mtn_tran6, shadow_pass ? this.materials.rock.override({ ambient: 0.7}) : this.pure);
+                this.shapes.mtn.draw(context, program_state, mtn_tran7, shadow_pass ? this.materials.rock.override({ ambient: 0.7}) : this.pure);
             } else {
-                this.shapes.mtn.draw(context, program_state, mtn_tran1, this.materials.rock);
-                this.shapes.mtn.draw(context, program_state, mtn_tran2, this.materials.rock);
-                this.shapes.mtn.draw(context, program_state, mtn_tran3, this.materials.rock);
-                this.shapes.mtn.draw(context, program_state, mtn_tran4, this.materials.rock);
-                this.shapes.mtn.draw(context, program_state, mtn_tran5, this.materials.rock);
-                this.shapes.mtn.draw(context, program_state, mtn_tran6, this.materials.rock);
-                this.shapes.mtn.draw(context, program_state, mtn_tran7, this.materials.rock);
+                this.shapes.mtn.draw(context, program_state, mtn_tran1, shadow_pass ? this.materials.rock : this.pure);
+                this.shapes.mtn.draw(context, program_state, mtn_tran2, shadow_pass ? this.materials.rock : this.pure);
+                this.shapes.mtn.draw(context, program_state, mtn_tran3, shadow_pass ? this.materials.rock : this.pure);
+                this.shapes.mtn.draw(context, program_state, mtn_tran4, shadow_pass ? this.materials.rock : this.pure);
+                this.shapes.mtn.draw(context, program_state, mtn_tran5, shadow_pass ? this.materials.rock : this.pure);
+                this.shapes.mtn.draw(context, program_state, mtn_tran6, shadow_pass ? this.materials.rock : this.pure);
+                this.shapes.mtn.draw(context, program_state, mtn_tran7, shadow_pass ? this.materials.rock : this.pure);
             }
         }
         
     }
 
 
-    draw_floor(context, program_state) {
+    draw_floor(context, program_state, shadow_pass) {
         const grass_green1 = hex_color('#7CFC00');
         const grass_green2 = hex_color("#009A17");
         const grass_green3 = hex_color("#00A619");
@@ -681,30 +692,30 @@ export class Project extends Scene {
 
         if (this.snow) {
             if(this.night){
-                this.shapes.pond.draw(context, program_state, this.pond_tran, this.materials.pond.override({ ambient: 0.7 }));
-                this.shapes.floor.draw(context, program_state, this.floor_tran, this.materials.snow_grass.override({ ambient: 0.85}));
+                this.shapes.pond.draw(context, program_state, this.pond_tran, shadow_pass ? this.materials.pond.override({ ambient: 0.7 }) : this.pure);
+                this.shapes.floor.draw(context, program_state, this.floor_tran, shadow_pass ? this.materials.snow_grass.override({ ambient: 0.85}): this.pure);
             } else {
-                this.shapes.pond.draw(context, program_state, this.pond_tran, this.materials.pond);
-                this.shapes.floor.draw(context, program_state, this.floor_tran, this.materials.snow_grass);
+                this.shapes.pond.draw(context, program_state, this.pond_tran, shadow_pass ? this.materials.pond : this.pure);
+                this.shapes.floor.draw(context, program_state, this.floor_tran, shadow_pass ? this.materials.snow_grass : this.pure);
             }
         } else {
             if(this.night){
-                this.shapes.pond.draw(context, program_state, this.pond_tran, this.materials.pond.override({ ambient: 0.7 }));
-                this.shapes.floor.draw(context, program_state, this.floor_tran, this.materials.grass.override({ ambient: 0.6}));
+                this.shapes.pond.draw(context, program_state, this.pond_tran, shadow_pass ? this.materials.pond.override({ ambient: 0.7 }) : this.pure);
+                this.shapes.floor.draw(context, program_state, this.floor_tran, shadow_pass ? this.materials.grass.override({ ambient: 0.6}): this.pure);
             } else {
-                this.shapes.floor.draw(context, program_state, this.floor_tran, this.materials.grass);
-                this.shapes.pond.draw(context, program_state, this.pond_tran, this.materials.pond);
+                this.shapes.floor.draw(context, program_state, this.floor_tran, shadow_pass ? this.materials.grass : this.pure);
+                this.shapes.pond.draw(context, program_state, this.pond_tran, shadow_pass ? this.materials.pond : this.pure);
             }
         }
     }
 
-    /*texture_buffer_init(gl) {
+    texture_buffer_init(gl) {
         // Depth Texture
         this.lightDepthTexture = gl.createTexture();
         // Bind it to TinyGraphics
         this.light_depth_texture = new Buffered_Texture(this.lightDepthTexture);
-        this.stars.light_depth_texture = this.light_depth_texture
-        this.floor.light_depth_texture = this.light_depth_texture
+        this.materials.fan.light_depth_texture = this.light_depth_texture
+        this.materials.glue.light_depth_texture = this.light_depth_texture
 
         this.lightDepthTextureSize = LIGHT_DEPTH_TEX_SIZE;
         gl.bindTexture(gl.TEXTURE_2D, this.lightDepthTexture);
@@ -761,16 +772,45 @@ export class Project extends Scene {
             this.unusedTexture,         // texture
             0);                    // mip level
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-    }*/
+    }
 
-    
+    render_scene(context, program_state, shadow_pass, draw_light_source=false, draw_shadow=false) {
+        // shadow_pass: true if this is the second pass that draw the shadow.
+        // draw_light_source: true if we want to draw the light source.
+        // draw_shadow: true if we want to draw the shadow
+
+        let light_position = this.light_position;
+        let light_color = this.light_color;
+        const t = program_state.animation_time;
+
+        program_state.draw_shadow = draw_shadow;
+
+        /*if (draw_light_source && shadow_pass) {
+            this.shapes.sphere.draw(context, program_state,
+                Mat4.translation(light_position[0], light_position[1], light_position[2]).times(Mat4.scale(.5,.5,.5)),
+                this.light_src.override({color: light_color}));
+        }
+
+        for (let i of [-1, 1]) { // Spin the 3D model shapes as well.
+            const model_transform = Mat4.translation(2 * i, 3, 0)
+                .times(Mat4.rotation(t / 1000, -1, 2, 0))
+                .times(Mat4.rotation(-Math.PI / 2, 1, 0, 0));
+            this.shapes.teapot.draw(context, program_state, model_transform, shadow_pass? this.stars : this.pure);
+        }*/
+
+        this.draw_floor(context, program_state, shadow_pass);
+        this.draw_mtn(context, program_state, -1.5, shadow_pass);
+        this.draw_mtn(context, program_state, 0.9, shadow_pass);
+        //specify the positions then draw the windmill, straightforward code
+        this.draw_windmill(position, context, program_state, shadow_pass);
+    }
 
     display(context, program_state) {
 
         const t = program_state.animation_time / 1000, dt = program_state.animation_delta_time / 1000;
         const gl = context.context;
 
-        /*if (!this.init_ok) {
+        if (!this.init_ok) {
             const ext = gl.getExtension('WEBGL_depth_texture');
             if (!ext) {
                 return alert('need WEBGL_depth_texture');  // eslint-disable-line
@@ -778,7 +818,7 @@ export class Project extends Scene {
             this.texture_buffer_init(gl);
 
             this.init_ok = true;
-        }*/
+        }
         
         // display():  Called once per frame of animation.
         // Setup -- This part sets up the scene's overall camera matrix, projection matrix, and lights:
@@ -911,7 +951,7 @@ export class Project extends Scene {
 
 
         //SET POSITION of windmill
-        const position = Mat4.identity().times(Mat4.translation(0,7,0));
+        const position = Mat4.identity().times(Mat4.translation(0,7,45));
 
         //what happen to wind if tornado, depend on tornado position only. WIP (will depend on x,y)
         if(this.is_tornado){
@@ -926,15 +966,55 @@ export class Project extends Scene {
         if(this.wind[0] > 0)
             this.body_response(0.005);
 
-        //specify the positions then draw the windmill, straightforward code
-        this.draw_windmill(position, context, program_state);
-
         //non-windmill
         this.draw_sky(context, program_state);
-        this.draw_floor(context, program_state);
-        this.draw_mtn(context, program_state, -1.5);
-        this.draw_mtn(context, program_state, 0.9);
         
+        // This is a rough target of the light.
+        // Although the light is point light, we need a target to set the POV of the light
+        this.light_view_target = vec4(0, -60, 95, 1);
+        this.light_field_of_view = 130 * Math.PI / 180; // 130 degree
+
+        //program_state.lights = [new Light(this.light_position, this.light_color, 1000)];
+
+        const light_pos3 = light_position.to3();
+        const light_view3 = this.light_view_target.to3();
+        console.log(light_pos3);
+        console.log(light_view3);
+
+        // Step 1: set the perspective and camera to the POV of light
+        const light_view_mat = Mat4.look_at(
+            light_pos3,
+            light_view3,
+            vec3(0, 1, 0), // assume the light to target will have a up dir of +y, maybe need to change according to your case
+        );
+        
+        const light_proj_mat = Mat4.perspective(this.light_field_of_view, 1, 0.5, 500);
+        // Bind the Depth Texture Buffer
+        gl.bindFramebuffer(gl.FRAMEBUFFER, this.lightDepthFramebuffer);
+        gl.viewport(0, 0, this.lightDepthTextureSize, this.lightDepthTextureSize);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+        // Prepare uniforms
+        program_state.light_view_mat = light_view_mat;
+        program_state.light_proj_mat = light_proj_mat;
+        program_state.light_tex_mat = light_proj_mat;
+        program_state.view_mat = light_view_mat;
+        program_state.projection_transform = light_proj_mat;
+        this.render_scene(context, program_state, false,false, false);
+
+        // Step 2: unbind, draw to the canvas
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+        program_state.view_mat = program_state.camera_inverse;
+        program_state.projection_transform = Mat4.perspective(Math.PI / 4, context.width / context.height, 0.5, 500);
+        this.render_scene(context, program_state, true,false, false);
+
+        // Step 3: display the textures
+        this.shapes.square_2d.draw(context, program_state,
+            Mat4.translation(-.99, .08, 0).times(
+            Mat4.scale(0.5, 0.5 * gl.canvas.width / gl.canvas.height, 1)
+            ),
+            this.depth_tex.override({texture: this.lightDepthTexture})
+        );
     }
     //GENERAL WIND VAR
     wind = [0,0];

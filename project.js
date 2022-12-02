@@ -572,8 +572,13 @@ export class Project extends Scene {
 
     draw_sky(context, program_state, sky_color=null) {
         if(this.spawn_snow || this.spawn_rain || this.spawn_bolt){
-            this.shapes.circle.draw(context, program_state, this.sun_tran, this.materials.sky.override({color: sky_color}));
-            this.shapes.floor.draw(context, program_state, this.sky_tran, this.materials.sky.override({color: sky_color}));
+            if (this.night) {
+                this.shapes.floor.draw(context, program_state, this.sky_tran, this.materials.night_sky);
+                this.shapes.circle.draw(context, program_state, this.sun_tran, this.materials.night_sky.override({ambient: 0.5}));
+            } else {
+                this.shapes.circle.draw(context, program_state, this.sun_tran, this.materials.sky.override({color: sky_color}));
+                this.shapes.floor.draw(context, program_state, this.sky_tran, this.materials.sky.override({color: sky_color}));
+            }
         } else if (this.night) {
             this.shapes.floor.draw(context, program_state, this.sky_tran, this.materials.night_sky);
             this.shapes.circle.draw(context, program_state, this.sun_tran, this.materials.moon);

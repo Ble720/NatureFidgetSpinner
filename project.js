@@ -43,7 +43,7 @@ export class Project extends Scene {
         this.sun_tran = Mat4.identity().times(Mat4.translation(0, 60, -95))
             .times(Mat4.scale(20, 20, 1));
 
-        this.pond_tran = Mat4.identity().times(Mat4.translation(20,-9.9,80))
+        this.pond_tran = Mat4.identity().times(Mat4.translation(5,-9.9,45))
             .times(Mat4.rotation(Math.PI*1/2, -1, 0, 0))
             .times(Mat4.scale(10, 10, 1));
 
@@ -142,7 +142,7 @@ export class Project extends Scene {
 
         };
 
-        this.initial_camera_location = Mat4.look_at(vec3(0, 10, 20), vec3(0, 0, 0), vec3(0, 1, 0));
+        this.initial_camera_location = Mat4.look_at(vec3(0, 1, 120), vec3(0, 0, 60), vec3(0, 1, 0));
 
         this.wind = [0, 3];
 
@@ -356,17 +356,17 @@ export class Project extends Scene {
     generate_snow(context, program_state, initial_transform, t, dt, wind){
         this.snow_list.forEach((element, index) => {
             let delta_time = t-element[4];
-            let f = 10*Math.sin(Math.PI/10*(delta_time)-Math.PI/2)+5;
+            let f = 20*Math.sin(Math.PI/10*(delta_time)-Math.PI/2)+10;
 
-            let dx = Math.cos(wind[0]/180*Math.PI)*wind[1]*delta_time;
-            let dz = Math.sin(wind[0]/180*Math.PI)*wind[1]*delta_time;
+            let dx = Math.cos(wind[0])*wind[1]*delta_time;
+            let dz = Math.sin(wind[0])*wind[1]*delta_time;
 
 
             let snow_transform = initial_transform.times(Mat4.translation(20*element[0]+dx, 10-f+element[1], 10*element[2]-dz)).times(Mat4.scale(0.1, 0.1, 0.1));
             snow_transform = snow_transform.times(Mat4.rotation(element[3]+f*Math.PI/2, 1, 1, 1));
             this.shapes.snow.draw(context, program_state, snow_transform, this.materials.snow);
             
-            if((10 - f + element[1]) < 0){
+            if((10 - f + element[1]) < -10){
                 this.snow_list.splice(index, 1);
             }
         });
@@ -393,15 +393,15 @@ export class Project extends Scene {
 
         this.rain_list.forEach((element, index) => {
             let delta_time = t-element[3];
-            let f = 10*Math.sin(Math.PI/3*(delta_time)-Math.PI/2)+5;
+            let f = 20*Math.sin(Math.PI/3*(delta_time)-Math.PI/2)+10;
 
-            let dx = Math.cos(wind[0]/180*Math.PI)*wind[1]*delta_time;
-            let dz = Math.sin(wind[0]/180*Math.PI)*wind[1]*delta_time;
+            let dx = Math.cos(wind[0])*wind[1]*delta_time;
+            let dz = Math.sin(wind[0])*wind[1]*delta_time;
 
-            let rain_transform = initial_transform.times(Mat4.translation(20*element[0]+dx, 10-f+element[1], 10*element[2]-dz)).times(Mat4.rotation(Math.PI/2 + wind[0]/180*Math.PI, 0, 1, 0));
+            let rain_transform = initial_transform.times(Mat4.translation(20*element[0]+dx, 10-f+element[1], 10*element[2]-dz)).times(Mat4.rotation(Math.PI/2 + wind[0], 0, 1, 0));
             rain_transform = rain_transform.times(Mat4.rotation(Math.PI/2-rain_angle, 1, 0, 0)).times(Mat4.scale(0.01, 0.01, 0.6));
             this.shapes.rain.draw(context, program_state, rain_transform, this.materials.rain);
-            if(10-f+element[1] < 0){
+            if(10-f+element[1] < -10){
                 this.rain_list.splice(index, 1);
             }
         });
@@ -531,7 +531,7 @@ export class Project extends Scene {
 
     generate_tornado(context, program_state, initial_transform, t, dt){
         this.tornado_path(dt);
-        let start_transform = initial_transform.times(Mat4.rotation(Math.PI/2, 1, 0, 0)).times(Mat4.translation(this.tornado_loc[0], this.tornado_loc[1], -25)).times(Mat4.rotation(3*t, 0, 0, 1)).times(Mat4.scale(10,10,10));
+        let start_transform = initial_transform.times(Mat4.rotation(Math.PI/2, 1, 0, 0)).times(Mat4.translation(this.tornado_loc[0], this.tornado_loc[1], -30)).times(Mat4.rotation(3*t, 0, 0, 1)).times(Mat4.scale(10,10,10));
         let tornado_transform = start_transform;
         tornado_transform = tornado_transform.times(Mat4.scale(3,3,1));
 
@@ -567,7 +567,10 @@ export class Project extends Scene {
     }
 
     draw_sky(context, program_state, sky_color=null) {
-        if (this.night) {
+        if(this.spawn_snow || this.spawn_rain){
+            this.shapes.circle.draw(context, program_state, this.sun_tran, this.materials.sky.override({color: sky_color}));
+            this.shapes.floor.draw(context, program_state, this.sky_tran, this.materials.sky.override({color: sky_color}));
+        } else if (this.night) {
             this.shapes.floor.draw(context, program_state, this.sky_tran, this.materials.night_sky);
             this.shapes.circle.draw(context, program_state, this.sun_tran, this.materials.moon);
         } else {
@@ -700,7 +703,7 @@ export class Project extends Scene {
             .times(Mat4.translation(1.7+x, 1.5, 0));
         let mtn_tran7 = this.mtn_tran.times(Mat4.scale(25, 25, 25))
             .times(Mat4.translation(-3.75+x, 2, 0));
-        if (this.snow) {
+        if (this.spawn_snow) {
             if(this.night){
                 this.shapes.mtn.draw(context, program_state, mtn_tran1, this.materials.snow_rock.override({ ambient: 0.7}));
                 this.shapes.mtn.draw(context, program_state, mtn_tran2, this.materials.snow_rock.override({ ambient: 0.7}));
@@ -749,7 +752,7 @@ export class Project extends Scene {
         const grass_green5 = hex_color("#09B051");
         const grass_green6 = hex_color("#59A608");
 
-        if (this.snow) {
+        if (this.spawn_snow) {
             if(this.night){
                 this.shapes.pond.draw(context, program_state, this.pond_tran, this.materials.pond.override({ ambient: 0.7 }));
                 this.shapes.floor.draw(context, program_state, this.floor_tran, this.materials.snow_grass.override({ ambient: 0.85}));
@@ -875,7 +878,7 @@ export class Project extends Scene {
         // display():  Called once per frame of animation.
         // Setup -- This part sets up the scene's overall camera matrix, projection matrix, and lights:
         if (!context.scratchpad.controls) {
-            this.children.push(context.scratchpad.controls = new defs.Movement_Controls());
+            //this.children.push(context.scratchpad.controls = new defs.Movement_Controls());
             // Define the global camera and projection matrices, which are stored in program_state.
             program_state.set_camera(this.initial_camera_location);
         }
@@ -889,7 +892,7 @@ export class Project extends Scene {
         // The parameters of the Light are: position, color, size
         program_state.lights = [new Light(light_position, color(1, 1, 1, 1), 100)];
 
-        let middle = Mat4.translation(0, 0, 60);
+        let middle = Mat4.translation(0, 0, 110);
         /*
     let wind_transform = model_transform.times(Mat4.translation(10*t-20, 0, 0));//.times(Mat4.rotation(Math.PI/8, 0, 0, 1))//.times(Mat4.translation(20*element[0]+dx, 10-f+element[1]+dy, 10*element[2]+dz)).times(Mat4.rotation(Math.PI/2 - wind[0]/180*Math/PI, 0, 1, 0));
     wind_transform = wind_transform.times(Mat4.rotation(2*t, 1, 0, 0)).times(Mat4.scale(2, 0.1, 1));
@@ -902,27 +905,29 @@ export class Project extends Scene {
             this.draw_bolt(context, program_state, 5, dt);
         }
 
-        this.generate_snow(context, program_state, middle, t, dt, this.wind);
-        this.generate_rain(context, program_state, middle, t, dt, this.wind);
+        let wind = [this.wind[0]+Math.PI/2, this.wind[1]];
 
-        if(this.wind[1] > 0 && !this.spawn_tornado){
-            this.generate_wind(context, program_state, middle, t, dt, [this.wind[0]+Math.PI/2, this.wind[1]]);
+        this.generate_snow(context, program_state, middle, t, dt, wind);
+        this.generate_rain(context, program_state, middle, t, dt, wind);
+
+        if(this.wind[1] > 0 && !this.spawn_tornado && !this.spawn_rain && !this.spawn_snow){
+            this.generate_wind(context, program_state, middle, t, dt, wind);
         }
         
+        if(!this.spawn_rain && !this.spawn_snow){
+            let tr = Mat4.translation(0, -9.9, 65).times(Mat4.rotation(-Math.PI/2, 1, 0, 0)).times(Mat4.scale(0.5, 8, 1));
+            this.shapes.wind.draw(context, program_state, tr, this.materials.wind.override({color: hex_color("000000", 0.1)}));
 
-        let tr = Mat4.translation(0, -9.9, 65).times(Mat4.rotation(-Math.PI/2, 1, 0, 0)).times(Mat4.scale(0.5, 8, 1));
-        this.shapes.wind.draw(context, program_state, tr, this.materials.wind.override({color: hex_color("000000", 0.1)}));
+            let tr2 = Mat4.translation(2*Math.sin(this.wind[0]), -9.9, 75).times(Mat4.rotation(-Math.PI/2, 1, 0, 0)).times(Mat4.scale(9*Math.cos(this.wind[0])+1, 10, 10));
+            this.shapes.circle.draw(context, program_state, tr2, this.materials.wind.override({color: hex_color("000000", 0.1)}));
 
+            let tr3 = Mat4.translation(0, -9.9, 75).times(Mat4.rotation(-Math.PI/2, 1, 0, 0)).times(Mat4.scale(1.5*Math.sin(this.wind[0]), 1, 1));
+            this.shapes.wind.draw(context, program_state, tr3, this.materials.wind.override({color: hex_color("000000", 0.1)}));
+
+            let tr4 = Mat4.translation(0, -9.9, 73).times(Mat4.rotation(-Math.PI/2, 1, 0, 0)).times(Mat4.scale(0.2, 1, 1));
+            this.shapes.wind.draw(context, program_state, tr4, this.materials.wind.override({color: hex_color("000000", 0.1)}));
+        }
         
-
-        let tr2 = Mat4.translation(2*Math.sin(this.wind[0]), -9.9, 75).times(Mat4.rotation(-Math.PI/2, 1, 0, 0)).times(Mat4.scale(9*Math.cos(this.wind[0])+1, 10, 10));
-        this.shapes.circle.draw(context, program_state, tr2, this.materials.wind.override({color: hex_color("000000", 0.1)}));
-
-        let tr3 = Mat4.translation(0, -9.9, 75).times(Mat4.rotation(-Math.PI/2, 1, 0, 0)).times(Mat4.scale(1.5*Math.sin(this.wind[0]), 1, 1));
-        this.shapes.wind.draw(context, program_state, tr3, this.materials.wind.override({color: hex_color("000000", 0.1)}));
-
-        let tr4 = Mat4.translation(0, -9.9, 73).times(Mat4.rotation(-Math.PI/2, 1, 0, 0)).times(Mat4.scale(0.2, 1, 1));
-        this.shapes.wind.draw(context, program_state, tr4, this.materials.wind.override({color: hex_color("000000", 0.1)}));
         /*
         let rain_transform = Mat4.identity().times(Mat4.rotation(0, 0, 1, 0)); //Math.PI/2-rain_angle
         rain_transform = rain_transform.times(Mat4.rotation(Math.PI/4, 1, 0, 0)).times(Mat4.translation(0, 0, 0)).times(Mat4.scale(0.01, 0.01, 0.6));

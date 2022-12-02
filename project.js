@@ -43,7 +43,7 @@ export class Project extends Scene {
         this.sun_tran = Mat4.identity().times(Mat4.translation(0, 60, -95))
             .times(Mat4.scale(20, 20, 1));
 
-        this.pond_tran = Mat4.identity().times(Mat4.translation(0,-9.5,80))
+        this.pond_tran = Mat4.identity().times(Mat4.translation(20,-9.9,80))
             .times(Mat4.rotation(Math.PI*1/2, -1, 0, 0))
             .times(Mat4.scale(10, 10, 1));
 
@@ -909,6 +909,10 @@ export class Project extends Scene {
         }
         
 
+        let tr = Mat4.translation(0, -9.9, 65).times(Mat4.rotation(-Math.PI/2, 1, 0, 0)).times(Mat4.scale(0.5, 8, 1));
+        this.shapes.wind.draw(context, program_state, tr, this.materials.wind.override({color: hex_color("000000", 0.1)}));
+        let tr2 = Mat4.translation(0, -9, 75).times(Mat4.rotation(-Math.PI/2, 1, 0, 0)).times(Mat4.scale(10, 10, 10));
+        this.shapes.circle.draw(context, program_state, tr2, this.materials.wind.override({color: hex_color("000000", 0.1)}));
         /*
         let rain_transform = Mat4.identity().times(Mat4.rotation(0, 0, 1, 0)); //Math.PI/2-rain_angle
         rain_transform = rain_transform.times(Mat4.rotation(Math.PI/4, 1, 0, 0)).times(Mat4.translation(0, 0, 0)).times(Mat4.scale(0.01, 0.01, 0.6));
@@ -1028,7 +1032,7 @@ export class Project extends Scene {
         } else{
             this.draw_sky(context, program_state);
         }
-        //#C5B4E3
+
         this.draw_floor(context, program_state);
         this.draw_mtn(context, program_state, -1.5);
         this.draw_mtn(context, program_state, 0.9);

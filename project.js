@@ -3,8 +3,10 @@ import {defs, tiny} from './examples/common.js';
 const {
     Vector, Vector3, vec, vec3, vec4, color, hex_color, Shader, Matrix, Mat4, Light, Shape, Material, Scene, Texture
 } = tiny;
+const {Textured_Phong} = defs;
 
-const {Textured_Phong} = defs
+/*import {Color_Phong_Shader, Shadow_Textured_Phong_Shader, 
+        Depth_Texture_Shader_2D, Buffered_Texture, LIGHT_DEPTH_TEX_SIZE} from './shadow-demo-shaders.js'*/
 
 class Line extends Shape {
     constructor() {
@@ -23,6 +25,9 @@ export class Project extends Scene {
     constructor() {
         // constructor(): Scenes begin by populating initial values like the Shapes and Materials they'll need.
         super();
+
+        // To make sure texture initialization only does once
+        this.init_ok = false;
 
         //Environment
         this.floor_tran = Mat4.identity().times(Mat4.translation(0,-10,0))
@@ -178,7 +183,7 @@ export class Project extends Scene {
         this.new_line();
         this.key_triggered_button("Day/Night", ["n"], () => {this.night ^= 1;});
         this.new_line();
-        this.key_triggered_button("Snow/No Snow", ["n"], () => {this.snow ^= 1;});
+        this.key_triggered_button("Snow/No Snow", ["o"], () => {this.snow ^= 1;});
     }
 
     windpx(){
@@ -493,8 +498,8 @@ export class Project extends Scene {
         }
     }
 
-    draw_sky(context, program_state, night) {
-        if (night) {
+    draw_sky(context, program_state) {
+        if (this.night) {
             this.shapes.floor.draw(context, program_state, this.sky_tran, this.materials.night_sky);
             this.shapes.circle.draw(context, program_state, this.sun_tran, this.materials.moon);
         } else {
@@ -521,13 +526,13 @@ export class Project extends Scene {
                                      .times(Mat4.translation(-3.75+x, 2, 0));
         if (this.snow) {
             if(this.night){
-                this.shapes.mtn.draw(context, program_state, mtn_tran1, this.materials.snow_rock.override({ ambient: 0.8}));
-                this.shapes.mtn.draw(context, program_state, mtn_tran2, this.materials.snow_rock.override({ ambient: 0.8}));
-                this.shapes.mtn.draw(context, program_state, mtn_tran3, this.materials.snow_rock.override({ ambient: 0.8}));
-                this.shapes.mtn.draw(context, program_state, mtn_tran4, this.materials.snow_rock.override({ ambient: 0.8}));
-                this.shapes.mtn.draw(context, program_state, mtn_tran5, this.materials.snow_rock.override({ ambient: 0.8}));
-                this.shapes.mtn.draw(context, program_state, mtn_tran6, this.materials.snow_rock.override({ ambient: 0.8}));
-                this.shapes.mtn.draw(context, program_state, mtn_tran7, this.materials.snow_rock.override({ ambient: 0.8}));
+                this.shapes.mtn.draw(context, program_state, mtn_tran1, this.materials.snow_rock.override({ ambient: 0.7}));
+                this.shapes.mtn.draw(context, program_state, mtn_tran2, this.materials.snow_rock.override({ ambient: 0.7}));
+                this.shapes.mtn.draw(context, program_state, mtn_tran3, this.materials.snow_rock.override({ ambient: 0.7}));
+                this.shapes.mtn.draw(context, program_state, mtn_tran4, this.materials.snow_rock.override({ ambient: 0.7}));
+                this.shapes.mtn.draw(context, program_state, mtn_tran5, this.materials.snow_rock.override({ ambient: 0.7}));
+                this.shapes.mtn.draw(context, program_state, mtn_tran6, this.materials.snow_rock.override({ ambient: 0.7}));
+                this.shapes.mtn.draw(context, program_state, mtn_tran7, this.materials.snow_rock.override({ ambient: 0.7}));
             } else {
                 this.shapes.mtn.draw(context, program_state, mtn_tran1, this.materials.snow_rock);
                 this.shapes.mtn.draw(context, program_state, mtn_tran2, this.materials.snow_rock);
@@ -539,13 +544,13 @@ export class Project extends Scene {
             }
         } else {
             if(this.night){
-                this.shapes.mtn.draw(context, program_state, mtn_tran1, this.materials.rock.override({ ambient: 0.8}));
-                this.shapes.mtn.draw(context, program_state, mtn_tran2, this.materials.rock.override({ ambient: 0.8}));
-                this.shapes.mtn.draw(context, program_state, mtn_tran3, this.materials.rock.override({ ambient: 0.8}));
-                this.shapes.mtn.draw(context, program_state, mtn_tran4, this.materials.rock.override({ ambient: 0.8}));
-                this.shapes.mtn.draw(context, program_state, mtn_tran5, this.materials.rock.override({ ambient: 0.8}));
-                this.shapes.mtn.draw(context, program_state, mtn_tran6, this.materials.rock.override({ ambient: 0.8}));
-                this.shapes.mtn.draw(context, program_state, mtn_tran7, this.materials.rock.override({ ambient: 0.8}));
+                this.shapes.mtn.draw(context, program_state, mtn_tran1, this.materials.rock.override({ ambient: 0.7}));
+                this.shapes.mtn.draw(context, program_state, mtn_tran2, this.materials.rock.override({ ambient: 0.7}));
+                this.shapes.mtn.draw(context, program_state, mtn_tran3, this.materials.rock.override({ ambient: 0.7}));
+                this.shapes.mtn.draw(context, program_state, mtn_tran4, this.materials.rock.override({ ambient: 0.7}));
+                this.shapes.mtn.draw(context, program_state, mtn_tran5, this.materials.rock.override({ ambient: 0.7}));
+                this.shapes.mtn.draw(context, program_state, mtn_tran6, this.materials.rock.override({ ambient: 0.7}));
+                this.shapes.mtn.draw(context, program_state, mtn_tran7, this.materials.rock.override({ ambient: 0.7}));
             } else {
                 this.shapes.mtn.draw(context, program_state, mtn_tran1, this.materials.rock);
                 this.shapes.mtn.draw(context, program_state, mtn_tran2, this.materials.rock);
@@ -559,7 +564,7 @@ export class Project extends Scene {
         
     }
 
-    draw_floor(context, program_state, snow, night) {
+    draw_floor(context, program_state) {
         const grass_green1 = hex_color('#7CFC00');
         const grass_green2 = hex_color("#009A17");
         const grass_green3 = hex_color("#00A619");
@@ -567,8 +572,8 @@ export class Project extends Scene {
         const grass_green5 = hex_color("#09B051");
         const grass_green6 = hex_color("#59A608");
 
-        if (snow) {
-            if(night){
+        if (this.snow) {
+            if(this.night){
                 this.shapes.pond.draw(context, program_state, this.pond_tran, this.materials.pond.override({ ambient: 0.7 }));
                 this.shapes.floor.draw(context, program_state, this.floor_tran, this.materials.snow_grass.override({ ambient: 0.85}));
             } else {
@@ -576,7 +581,7 @@ export class Project extends Scene {
                 this.shapes.floor.draw(context, program_state, this.floor_tran, this.materials.snow_grass);
             }
         } else {
-            if(night){
+            if(this.night){
                 this.shapes.pond.draw(context, program_state, this.pond_tran, this.materials.pond.override({ ambient: 0.7 }));
                 this.shapes.floor.draw(context, program_state, this.floor_tran, this.materials.grass.override({ ambient: 0.6}));
             } else {
@@ -586,8 +591,88 @@ export class Project extends Scene {
         }
     }
 
+    /*texture_buffer_init(gl) {
+        // Depth Texture
+        this.lightDepthTexture = gl.createTexture();
+        // Bind it to TinyGraphics
+        this.light_depth_texture = new Buffered_Texture(this.lightDepthTexture);
+        this.stars.light_depth_texture = this.light_depth_texture
+        this.floor.light_depth_texture = this.light_depth_texture
+
+        this.lightDepthTextureSize = LIGHT_DEPTH_TEX_SIZE;
+        gl.bindTexture(gl.TEXTURE_2D, this.lightDepthTexture);
+        gl.texImage2D(
+            gl.TEXTURE_2D,      // target
+            0,                  // mip level
+            gl.DEPTH_COMPONENT, // internal format
+            this.lightDepthTextureSize,   // width
+            this.lightDepthTextureSize,   // height
+            0,                  // border
+            gl.DEPTH_COMPONENT, // format
+            gl.UNSIGNED_INT,    // type
+            null);              // data
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+        // Depth Texture Buffer
+        this.lightDepthFramebuffer = gl.createFramebuffer();
+        gl.bindFramebuffer(gl.FRAMEBUFFER, this.lightDepthFramebuffer);
+        gl.framebufferTexture2D(
+            gl.FRAMEBUFFER,       // target
+            gl.DEPTH_ATTACHMENT,  // attachment point
+            gl.TEXTURE_2D,        // texture target
+            this.lightDepthTexture,         // texture
+            0);                   // mip level
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+        // create a color texture of the same size as the depth texture
+        // see article why this is needed_
+        this.unusedTexture = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, this.unusedTexture);
+        gl.texImage2D(
+            gl.TEXTURE_2D,
+            0,
+            gl.RGBA,
+            this.lightDepthTextureSize,
+            this.lightDepthTextureSize,
+            0,
+            gl.RGBA,
+            gl.UNSIGNED_BYTE,
+            null,
+        );
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        // attach it to the framebuffer
+        gl.framebufferTexture2D(
+            gl.FRAMEBUFFER,        // target
+            gl.COLOR_ATTACHMENT0,  // attachment point
+            gl.TEXTURE_2D,         // texture target
+            this.unusedTexture,         // texture
+            0);                    // mip level
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    }*/
+
+    
+
     display(context, program_state) {
+
         const t = program_state.animation_time / 1000, dt = program_state.animation_delta_time / 1000;
+        const gl = context.context;
+
+        /*if (!this.init_ok) {
+            const ext = gl.getExtension('WEBGL_depth_texture');
+            if (!ext) {
+                return alert('need WEBGL_depth_texture');  // eslint-disable-line
+            }
+            this.texture_buffer_init(gl);
+
+            this.init_ok = true;
+        }*/
+        
         // display():  Called once per frame of animation.
         // Setup -- This part sets up the scene's overall camera matrix, projection matrix, and lights:
         if (!context.scratchpad.controls) {
@@ -631,7 +716,7 @@ export class Project extends Scene {
         
        
         //this.shapes.bolt.draw(context, program_state, Mat4.identity().times(Mat4.rotation(Math.PI/2, 0, 1, 0)), this.materials.bolt);
-        this.draw_bolt(context, program_state, 5);
+        //this.draw_bolt(context, program_state, 5);
         //console.log(this.bolt);
         
         /*
@@ -717,8 +802,8 @@ export class Project extends Scene {
 
         this.shapes.conic.draw(context, program_state, cone_test, this.materials.fan.override({color: hex_color("#65788a")}));
 */
-        this.draw_sky(context, program_state, this.night);
-        this.draw_floor(context, program_state, this.snow, this.night);
+        this.draw_sky(context, program_state);
+        this.draw_floor(context, program_state);
         this.draw_mtn(context, program_state, -1.5);
         this.draw_mtn(context, program_state, 0.9);
         

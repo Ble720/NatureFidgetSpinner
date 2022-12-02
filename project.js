@@ -133,7 +133,7 @@ export class Project extends Scene {
             rain: new Material(new defs.Phong_Shader(), 
                 {ambient: 1, diffusivity: 1, specularity: 1, color: hex_color("#ffffff")}),
             wind: new Material(new defs.Phong_Shader(), 
-                {ambient: 0.5, diffusivity: 0, specularity: 0.3, color: hex_color("#ffffff", 0.3)}),
+                {ambient: 0.5, diffusivity: 0, specularity: 0.3, color: hex_color("#ffffff", 0.1)}),
             tornado: new Material(new Textured_Phong(), 
                 {ambient: 1, diffusivity: 0, specularity: 0.3, color: hex_color("000000"), texture: new Texture("assets/tornado.png")}),
             cloud: new Material(new defs.Phong_Shader(), 
@@ -146,64 +146,116 @@ export class Project extends Scene {
 
         this.wind = [0, 3];
 
+        //exclusive for windmill
+        this.reaction_wind = [0,0];
+        this.curr_rot = 0;
+        //end
+
         this.snow_list = [];
         this.rain_list = [];
         this.wind_list = [];
         this.gust_active = false;
 
-        this.tornado_loc = [-20, -5];
+        this.tornado_loc = [-40, -30];
+        this.tornado_circle_dt = 0;
         this.tornado_dt = 0;
         this.circle = false;
+        this.spawn_tornado = false;
 
-        this.wind = (0, 0, 0, 1);
         this.snow_dt = 0;
         this.rain_dt = 0;
         this.wind_dt = 0;
         this.gust_dt = 0;
         this.bolt = null;
-        
-        this.rot_trigger = 0;
-        this.curr_rot = 0;
-        this.rot_speed = 0;
-        this.time_elapsed = 0;
-        this.time_snapshot = 0;
+
+
+        this.shown_wind_angle = this.wind[0] - 90;
     }
 
-    make_control_panel() {
-        // Draw the scene's buttons, setup their actions and keyboard shortcuts, and monitor live measurements.
-        this.key_triggered_button("View solar system", ["N", "0"], () => this.attached = () => this.wind = (0, 0, 0, this.wind[3]));
-        this.new_line();
-        this.key_triggered_button("Attach to planet 1", ["S", "1"], () => this.attached = () => this.wind);
-        this.key_triggered_button("Attach to planet 2", ["E", "2"], () => this.attached = () => this.planet_2);
-        this.new_line();
-        this.key_triggered_button("Attach to planet 3", ["W", "3"], () => this.attached = () => this.planet_3);
-        this.key_triggered_button("Attach to planet 4", ["Wind Intensity + 1", "w"], () => this.attached = () => this.planet_4);
-        this.new_line();
-        this.key_triggered_button("Attach to moon", ["Wind Intensity - 1", "m"], () => this.attached = () => this.moon);
-        this.new_line();
-        this.key_triggered_button("Day/Night", ["n"], () => {this.night ^= 1;});
-        this.new_line();
-        this.key_triggered_button("Snow/No Snow", ["o"], () => {this.snow ^= 1;});
+    changeWindDir(angle){
+        if(this.wind[0] + angle >= 360){
+            this.wind[0] = this.wind[0] + angle - 360;
+        } else if(this.wind[0] + angle < 0){
+            this.wind[0] = this.wind[0] + angle + 360;
+        } else{
+            this.wind[0] += angle;
+        }
+
+        if(this.wind[0] - 90 < 0){
+            this.shown_wind_angle = this.wind[0] + 270;
+        } else{
+            this.shown_wind_angle = this.wind[0] - 90;
+        }
+    }
+
+    changeWindIntensity(pm){
+        if(this.wind[1] + pm < 0 || this.wind[1] + pm > 10){
+            //do nothing
+        } else{
+            this.wind[1] += pm;
+        }
     }
 
     windpx(){
         this.rot_trigger = 1;
     }
 
-    windnx(){
-        this.rot_trigger = 2;
+    plusSpd(){
+        //speed cap is 10
+        if(this.wind[0] < 10)
+            this.wind[0] += 1;
     }
 
-    stopwind(){
-        this.rot_trigger = 0;
+    minusSpd(){
+        //only subtract if speed is not neg
+        if(this.wind[0] > 0){
+            this.wind[0] -= 1;
+        }
     }
 
-    immediatestop(){this2
-        this.rot_trigger = 3;
+    tornado(){
+        this.is_tornado = 1
     }
 
-    gust(){
-        this.rot_trigger = 4;
+    refine_wind(){
+        if(this.wind[1] < 0){
+            this.wind[1] += 2*Math.PI;
+        }
+        if(this.wind[1] > 2*Math.PI){
+            this.wind[1] -= 2*Math.PI;
+        }
+    }
+
+    refine_reaction(){
+        if(this.reaction_wind[1] < 0){
+            this.reaction_wind[1] += 2*Math.PI;
+        }
+        if(this.reaction_wind[1] > 2*Math.PI){
+            this.reaction_wind[1] -= 2*Math.PI;
+        }
+    }
+
+    make_control_panel() {
+        // Draw the scene's buttons, setup their actions and keyboard shortcuts, and monitor live measurements.
+        this.live_string(box => box.textContent = "Wind: " + "(" + this.wind[0].toFixed(2) + ","
+            +this.wind[1].toFixed(2)+")");
+        this.new_line();
+        this.live_string(box => box.textContent = "Reaction wind (debug): " + "("
+            + this.reaction_wind[0].toFixed(2) + "," + this.reaction_wind[1].toFixed(2)+")");
+        this.new_line();
+        this.key_triggered_button("wind angle +", ["control","1"], this.plusAngle);
+        this.key_triggered_button("wind angle -", ["control","2"], this.minusAngle);
+        this.new_line();
+        this.key_triggered_button("wind speed +", ["control","3"], this.plusSpd);
+        this.key_triggered_button("wind speed -", ["control","4"], this.minusSpd);
+        this.new_line();
+        this.key_triggered_button("model hurricane", ["Control", "5"], this.tornado);
+        this.key_triggered_button("Tornado Spawn", ["0"], () => this.spawn_tornado = true);
+        this.new_line();
+
+        this.key_triggered_button("Day/Night", ["n"], () => {this.night ^= 1;});
+        this.new_line();
+        this.key_triggered_button("Snow/No Snow", ["o"], () => {this.snow ^= 1;});
     }
 
     generate_snow(context, program_state, initial_transform, t, dt, wind){
@@ -245,16 +297,15 @@ export class Project extends Scene {
         let z = -Math.sin(wind[0]/180*Math.PI);
 
         let px = Math.cos(wind[0]/180*Math.PI + Math.PI/2);
-        let pz = Math.sin(wind[0]/180*Math.PI + Math.PI/2);
+        let pz = -Math.sin(wind[0]/180*Math.PI + Math.PI/2);
 
         this.wind_list.forEach((element, index) => {
-            let delta_time = t-element[4];
+            let delta_time = t-element[3];
 
             let dx = x*delta_time*20;
             let dz = z*delta_time*20;
-            let dy = Math.sin(element[2])*delta_time*20;
 
-            let wind_transform = initial_transform.times(Mat4.translation((-20+element[3])*x + element[0]*px + dx, 10*element[1]+dy, (20 - element[3])*z - element[0]*pz + dz));
+            let wind_transform = initial_transform.times(Mat4.translation((20+element[2])*x + element[0]*px + dx, 10*element[1], (20 - element[2])*z - element[0]*pz + dz));
             wind_transform = wind_transform.times(Mat4.rotation(wind[0], 0, 1, 0));
             wind_transform = wind_transform.times(Mat4.rotation(2*delta_time, 1, 0, 0)).times(Mat4.scale(2, 0.1, 1));
             this.shapes.wind.draw(context, program_state, wind_transform, this.materials.rain);
@@ -273,7 +324,7 @@ export class Project extends Scene {
                 let d = 10*Math.random()-5;
         
                 let wind_transform = initial_transform.times(Mat4.translation((20 + d)*x + w*px, 10*h, (20 + d)*z - w*pz)).times(Mat4.rotation(wind[0], 0, 1, 0)).times(Mat4.scale(2, 0.1, 1));
-                this.wind_list.push(Array(w, h, ay, d, t));
+                this.wind_list.push(Array(w, h, d, t));
                 this.shapes.wind.draw(context, program_state, wind_transform, this.materials.wind);
             }
         } else{
@@ -286,9 +337,6 @@ export class Project extends Scene {
         } 
     }
 
-    generate_gust(context, program_state){
-
-    }
 
     generate_rain(context, program_state, initial_transform, t, dt, wind){
         let rain_angle = Math.PI/4*(wind[1]/10);
@@ -427,31 +475,37 @@ export class Project extends Scene {
     }
 
     tornado_path(dt){
-        let speed = 5;
+        let speed = 10;
        
-        if(!this.circle && this.tornado_loc[1] == -5){
+        if(!this.circle && this.tornado_loc[1] == -30){
             if(this.tornado_loc[0] >= 0){
-                this.tornado_loc = [0, -5];
+                this.tornado_loc = [0, -30];
                 this.circle = true;
             } else{
                 this.tornado_loc[0] += speed*dt;
             }
         } else{
-            if(this.tornado_dt > 5){
+            if(this.tornado_circle_dt > 10){
                 this.tornado_loc[0] += speed*dt;
             } else {
-                let x = 5*Math.sin(2/5*Math.PI*this.tornado_dt);
-                let z = -5*Math.cos(2/5*Math.PI*this.tornado_dt);
+                let x = 30*Math.sin(2/10*Math.PI*this.tornado_circle_dt);
+                let z = -30*Math.cos(2/10*Math.PI*this.tornado_circle_dt);
                 this.tornado_loc = [x,z];
             }
-            this.tornado_dt += dt;
+            this.tornado_circle_dt += dt;
         }
-        
+        if(this.tornado_dt > 25){
+            this.spawn_tornado = false;
+            this.tornado_loc = [-40, -30];
+            this.tornado_circle_dt = 0;
+            this.tornado_dt = 0;
+        }
+        this.tornado_dt += dt;
     }
 
     generate_tornado(context, program_state, initial_transform, t, dt){
         this.tornado_path(dt);
-        let start_transform = initial_transform.times(Mat4.rotation(Math.PI/2, 1, 0, 0)).times(Mat4.translation(this.tornado_loc[0], 0, this.tornado_loc[1])).times(Mat4.rotation(3*t, 0, 0, 1));
+        let start_transform = initial_transform.times(Mat4.rotation(Math.PI/2, 1, 0, 0)).times(Mat4.translation(this.tornado_loc[0], this.tornado_loc[1], -25)).times(Mat4.rotation(3*t, 0, 0, 1)).times(Mat4.scale(10,10,10));
         let tornado_transform = start_transform;
         tornado_transform = tornado_transform.times(Mat4.scale(3,3,1));
 
@@ -486,18 +540,6 @@ export class Project extends Scene {
         }*/
     }
 
-
-    calcXZangle(wind){
-        if(wind[2] == 1){
-            return Math.PI/2;
-        } else if(wind[2] == -1){
-            return -Math.PI/2;
-        } else{
-            let angle = Math.atan(wind[2]/wind[0]);
-            return wind[0] >= 0 ? angle : angle + Math.PI;
-        }
-    }
-
     draw_sky(context, program_state) {
         if (this.night) {
             this.shapes.floor.draw(context, program_state, this.sky_tran, this.materials.night_sky);
@@ -506,8 +548,90 @@ export class Project extends Scene {
             this.shapes.floor.draw(context, program_state, this.sky_tran, this.materials.sky);
             this.shapes.circle.draw(context, program_state, this.sun_tran, this.materials.sky.override({color: hex_color("#FDB813")}));
         }
-        
     }
+
+    //windmill draw out
+    draw_windmill(windmill_pos, context, program_state){
+        let fan_axis = windmill_pos.times(Mat4.translation(0,0,-2))
+            .times(Mat4.rotation(this.reaction_wind[1],0,1,0));
+
+        this.curr_rot = this.curr_rot + this.reaction_wind[0]/20;
+        let fan1 = fan_axis.times(Mat4.translation(0,0,2))
+            .times(Mat4.rotation(this.curr_rot, 0, 0, 1))
+            .times(Mat4.rotation(-0.8,1,0,0))
+            .times(Mat4.scale(6,0.5,0.1))
+            .times(Mat4.translation(0.97, 0, 0));
+
+        let fan2 = fan_axis.times(Mat4.translation(0,0,2))
+            .times(Mat4.rotation(this.curr_rot+2*Math.PI/3, 0, 0, 1))
+            .times(Mat4.rotation(-0.8,1,0,0))
+            .times(Mat4.scale(6,0.5,0.1))
+            .times(Mat4.translation(0.97, 0, 0));
+
+        let fan3 = fan_axis.times(Mat4.translation(0,0,2))
+            .times(Mat4.rotation(this.curr_rot+4*Math.PI/3, 0, 0, 1))
+            .times(Mat4.rotation(-0.8,1,0,0))
+            .times(Mat4.scale(6,0.5,0.1))
+            .times(Mat4.translation(0.97, 0, 0));
+
+        let triangle_transform = fan_axis.times(Mat4.translation(0,0,2))
+            .times(Mat4.rotation(this.curr_rot + Math.PI/3, 0,0,1))
+            .times(Mat4.scale(0.9,0.9,1.1));
+
+        let circular_axis = fan_axis.times(Mat4.translation(0,0,1))
+            .times(Mat4.scale(0.2,0.2,1));
+
+        let staff1 = fan_axis.times(Mat4.translation(0,0,-0.4))
+            .times(Mat4.scale(0.5,0.5,1.2));
+
+        let staff2 = windmill_pos.times(Mat4.translation(0,-0.5,-2))
+            .times(Mat4.rotation(-Math.PI/2, 1,0,0))
+            .times(Mat4.scale(0.2,0.2,1));
+
+        let staff3 = windmill_pos.times(Mat4.translation(0,-9,-2))
+            .times(Mat4.rotation(-Math.PI/2,1,0,0))
+            .times(Mat4.scale(0.5,0.5,16));
+
+
+        this.shapes.triangle.draw(context, program_state, triangle_transform, this.materials.glue);
+        this.shapes.square.draw(context, program_state, fan1, this.materials.fan.override({color: color(0.3,0.8,0.5,1)}));
+        this.shapes.square.draw(context, program_state, fan2, this.materials.fan.override({color: color(0.3,0.5,0.8,1)}));
+        this.shapes.square.draw(context, program_state, fan3, this.materials.fan.override({color: color(0.8,0.5,0.3,1)}));
+        this.shapes.cylinder.draw(context, program_state, circular_axis, this.materials.glue.override({color: color(0.3,0.3,0.3,1)}));
+        this.shapes.square.draw(context, program_state, staff1, this.materials.glue.override({color: hex_color("#cccccc")}));
+        this.shapes.cylinder.draw(context, program_state, staff2, this.materials.glue.override({color: hex_color("#aaaaaa")}));
+        this.shapes.cylinder.draw(context, program_state, staff3, this.materials.glue.override({color: hex_color("#65788a")}));
+    }
+
+    //how fan respond to changing intensity
+    fan_response(k){
+        //modelling fan rotation in its plane
+        if(this.reaction_wind[0] + k*10 < this.wind[0]) //case when wind stronger than windmill response
+            this.reaction_wind[0] += Math.max(2*k, k*this.wind[0]);
+        else{
+            if(this.reaction_wind[0] - k*10 > this.wind[0]) //case when wind slower than windmill and nonzero
+                this.reaction_wind[0] -= Math.max(2*k, k*this.wind[0]);
+            else if(this.wind[0] == 0)//case when wind is 0 and windmill already very slow, means we stop it
+                this.reaction_wind[0] = 0;
+        }
+    }
+
+    //how windmill respond to changing direction
+    body_response(k){
+        //modelling windmill body rotation
+        if(this.reaction_wind[1] > this.wind[1] + k*10 || this.reaction_wind[1] < this.wind[1] - k*10) {
+            //Some math to determine which direction to rotate to align
+            //case 1: rotate clockwise to align with wind
+            if ((this.wind[1] > this.reaction_wind[1] && this.wind[1] - this.reaction_wind[1] < Math.PI) || (this.reaction_wind[1] - this.wind[1] > Math.PI)) {
+                this.reaction_wind[1] += k * this.wind[0];
+                this.refine_reaction();
+            }
+            else {
+                this.reaction_wind[1] -= k * this.wind[0];
+                this.refine_reaction();
+            }
+        }
+    }//end of body ref function
 
     draw_mtn(context, program_state, x){
         let mtn_tran1 = this.mtn_tran.times(Mat4.scale(50, 50, 40))
@@ -563,6 +687,7 @@ export class Project extends Scene {
         }
         
     }
+
 
     draw_floor(context, program_state) {
         const grass_green1 = hex_color('#7CFC00');
@@ -687,7 +812,6 @@ export class Project extends Scene {
         let model_transform = Mat4.identity();
         
         
-        // TODO: Lighting (Requirement 2)
         const light_position = vec4(0, 60, -95, 1); //0,5,5,1
         // The parameters of the Light are: position, color, size
         program_state.lights = [new Light(light_position, color(1, 1, 1, 1), 100)];
@@ -697,10 +821,12 @@ export class Project extends Scene {
         let wind_transform = model_transform.times(Mat4.translation(10*t-20, 0, 0));//.times(Mat4.rotation(Math.PI/8, 0, 0, 1))//.times(Mat4.translation(20*element[0]+dx, 10-f+element[1]+dy, 10*element[2]+dz)).times(Mat4.rotation(Math.PI/2 - wind[0]/180*Math/PI, 0, 1, 0));
         wind_transform = wind_transform.times(Mat4.rotation(2*t, 1, 0, 0)).times(Mat4.scale(2, 0.1, 1));
         this.shapes.wind.draw(context, program_state, wind_transform, this.materials.wind);*/
+        if(this.spawn_tornado){
+            this.generate_tornado(context, program_state, model_transform, t, dt);
+        }
+        this.generate_wind(context, program_state, model_transform, t, dt, [45, 4]);
 
-        //this.generate_wind(context, program_state, model_transform, t, dt, [45, 4]);
-
-
+        console.log(this.spawn_tornado);
         /*
         let rain_transform = Mat4.identity().times(Mat4.rotation(0, 0, 1, 0)); //Math.PI/2-rain_angle
         rain_transform = rain_transform.times(Mat4.rotation(Math.PI/4, 1, 0, 0)).times(Mat4.translation(0, 0, 0)).times(Mat4.scale(0.01, 0.01, 0.6));
@@ -708,7 +834,7 @@ export class Project extends Scene {
         this.shapes.snow.draw(context, program_state, Mat4.identity(), this.materials.snow);*/
         //this.generate_snow(context, program_state, middle, t, dt, [270, 3]);
         //this.generate_rain(context, program_state, middle, t, dt, [135, 10]);
-        //this.generate_tornado(context, program_state, model_transform, t, dt);
+        
         //model_transform = model_transform.times(Mat4.rotation(Math.PI/2, 1, 0, 0)).times(Mat4.scale(0.5, 0.5, 1));
         //this.shapes.rain.draw(context, program_state, model_transform, this.materials.rain.override({color: hex_color("#c7e4ee", 1)})); //
         //this.shapes.outline.draw(context, program_state, model_transform, this.materials.rain, "LINES");
@@ -802,12 +928,40 @@ export class Project extends Scene {
 
         this.shapes.conic.draw(context, program_state, cone_test, this.materials.fan.override({color: hex_color("#65788a")}));
 */
+
+
+        //SET POSITION of windmill
+        const position = Mat4.identity().times(Mat4.translation(0,7,0));
+
+        //what happen to wind if tornado, depend on tornado position only. WIP (will depend on x,y)
+        if(this.is_tornado){
+            this.wind[0] = 10; //maybe 10/dist(windmill, tornado)
+            this.wind[1] = t % (2*Math.PI); //use some geometry, may need some cases
+        }
+
+        this.refine_wind();
+
+        //k is how responsive the fan/body is to the wind intensity
+        this.fan_response(0.005);
+        if(this.wind[0] > 0)
+            this.body_response(0.005);
+
+        //specify the positions then draw the windmill, straightforward code
+        this.draw_windmill(position, context, program_state);
+
+        //non-windmill
         this.draw_sky(context, program_state);
         this.draw_floor(context, program_state);
         this.draw_mtn(context, program_state, -1.5);
         this.draw_mtn(context, program_state, 0.9);
         
     }
+    //GENERAL WIND VAR
+    wind = [0,0];
+
+    //windmill vars
+    reaction_wind = [0,0];
+    is_tornado = 0;
 }
 
 class Gouraud_Shader extends Shader {

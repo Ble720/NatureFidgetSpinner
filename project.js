@@ -129,7 +129,7 @@ export class Project extends Scene {
             }),
 
             snow: new Material(new defs.Phong_Shader(),
-                {ambient: 1, diffusivity: 1, specularity: 1, color: hex_color("#c7dcff")}),
+                {ambient: 1, diffusivity: 1, specularity: 1, color: hex_color("#f3f6fb")}), //#c7dcff
             rain: new Material(new defs.Phong_Shader(),
                 {ambient: 1, diffusivity: 1, specularity: 1, color: hex_color("#ffffff")}),
             wind: new Material(new defs.Phong_Shader(),
@@ -161,12 +161,16 @@ export class Project extends Scene {
         this.tornado_dt = 0;
         this.circle = false;
         this.spawn_tornado = false;
+        this.spawn_bolt = false;
+        this.spawn_rain = false;
+        this.spawn_snow = false;
 
         this.snow_dt = 0;
         this.rain_dt = 0;
         this.wind_dt = 0;
         this.gust_dt = 0;
         this.bolt = null;
+        this.bolt_dt = 0;
 
         //debug
         this.state = 1;
@@ -263,7 +267,7 @@ export class Project extends Scene {
         this.new_line();
         this.key_triggered_button("model hurricane", ["Control", "5"], this.tornado);
         this.key_triggered_button("Tornado Spawn", ["0"], () => this.setWeather("tornado"));
-        this.key_triggered_button("Lightning Spawn", ["1"], () => this.setWeather("bolt"));
+        this.key_triggered_button("Lightning Spawn", ["b"], () => this.setWeather("bolt"));
         this.new_line();
 
         this.key_triggered_button("Day/Night", ["n"], () => {this.night ^= 1;});
@@ -306,21 +310,10 @@ export class Project extends Scene {
     }
     
     generate_wind(context, program_state, initial_transform, t, dt, wind){
-        let x = Math.cos(wind[0]/180*Math.PI);
-        let z = -Math.sin(wind[0]/180*Math.PI);
-
-        let px = Math.cos(wind[0]/180*Math.PI + Math.PI/2);
-        let pz = -Math.sin(wind[0]/180*Math.PI + Math.PI/2);
-
         this.wind_list.forEach((element, index) => {
             let delta_time = t-element[3];
-
-            let dx = x*delta_time*20;
-            let dz = z*delta_time*20;
-
-            let wind_transform = initial_transform.times(Mat4.translation((20+element[2])*x + element[0]*px + dx, 10*element[1], (20 - element[2])*z - element[0]*pz + dz));
-            wind_transform = wind_transform.times(Mat4.rotation(wind[0], 0, 1, 0));
-            wind_transform = wind_transform.times(Mat4.rotation(2*delta_time, 1, 0, 0)).times(Mat4.scale(2, 0.1, 1));
+            let wind_transform = initial_transform.times(Mat4.rotation(wind[0], 0, 1, 0));
+            wind_transform = wind_transform.times(Mat4.translation(-20+element[2] + delta_time*20, 10*element[1], 15*element[0])).times(Mat4.scale(2, 0.1, 1));
             this.shapes.wind.draw(context, program_state, wind_transform, this.materials.rain);
 
             if(delta_time > 5){
@@ -330,13 +323,12 @@ export class Project extends Scene {
 
         if(this.wind_dt > 3){
             this.wind_dt = 0;
-            for(let i = 0; i < 3; i++){
+            for(let i = 0; i < 5; i++){
                 let w = 2*Math.random()-1;
                 let h = Math.random();
-                let ay = (2*Math.random()-1) * Math.PI/16;
                 let d = 10*Math.random()-5;
 
-                let wind_transform = initial_transform.times(Mat4.translation((20 + d)*x + w*px, 10*h, (20 + d)*z - w*pz)).times(Mat4.rotation(wind[0], 0, 1, 0)).times(Mat4.scale(2, 0.1, 1));
+                let wind_transform = initial_transform.times(Mat4.rotation(wind[0], 0, 1, 0)).times(Mat4.translation((20 + d), 10*h, 15*w)).times(Mat4.scale(2, 0.1, 1));
                 this.wind_list.push(Array(w, h, d, t));
                 this.shapes.wind.draw(context, program_state, wind_transform, this.materials.wind);
             }
@@ -420,9 +412,9 @@ export class Project extends Scene {
     }
 
     gernerate_bolt(gen){
-        let ys = 12;
-        let xs = (2*Math.random()-1)*10;
-        let xd = (2*Math.random()-1)*5;
+        let ys = 75;
+        let xs = (2*Math.random()-1)*20;
+        let xd = (2*Math.random()-1)*20;
         let yd = -5;
 
         let bolt_path = [];
@@ -474,7 +466,7 @@ export class Project extends Scene {
         this.bolt = bolt_path;
     }
 
-    draw_bolt(context, program_state, gen){
+    draw_bolt(context, program_state, gen, dt){
         if(this.bolt == null){
             this.gernerate_bolt(gen);
         }
@@ -488,13 +480,19 @@ export class Project extends Scene {
                 angle -= Math.PI;
             }
 
-            let bolt_translation = Mat4.identity().times(Mat4.translation(element[0][0], element[0][1], -20));
+            let bolt_translation = Mat4.identity().times(Mat4.translation(element[0][0], element[0][1], -75));
             bolt_translation = bolt_translation.times(Mat4.rotation(angle, 0, 0, 1));
             bolt_translation = bolt_translation.times(Mat4.scale(length,1,1));
 
             this.shapes.bolt.draw(context, program_state, bolt_translation, this.materials.bolt, "LINES");
         });
-        this.shapes.circle.draw(context, program_state, Mat4.identity().times(Mat4.rotation(Math.PI/2, 0,0,1)),this.materials.test);
+
+        this.bolt_dt += dt;
+        if(this.bolt_dt > 0.7){
+            this.spawn_bolt = false;
+            this.bolt = null;
+            this.bolt_dt = 0;
+        }
     }
 
     tornado_path(dt){
@@ -556,12 +554,16 @@ export class Project extends Scene {
         }
     }
 
-    draw_sky(context, program_state) {
+    draw_sky(context, program_state, sky_color=null) {
         if (this.night) {
             this.shapes.floor.draw(context, program_state, this.sky_tran, this.materials.night_sky);
             this.shapes.circle.draw(context, program_state, this.sun_tran, this.materials.moon);
         } else {
-            this.shapes.floor.draw(context, program_state, this.sky_tran, this.materials.sky);
+            if(sky_color==null){
+                this.shapes.floor.draw(context, program_state, this.sky_tran, this.materials.sky);
+            } else {
+                this.shapes.floor.draw(context, program_state, this.sky_tran, this.materials.sky.override({color: sky_color}));
+            }
             this.shapes.circle.draw(context, program_state, this.sun_tran, this.materials.sky.override({color: hex_color("#FDB813")}));
         }
     }
@@ -838,7 +840,7 @@ export class Project extends Scene {
         }
 
         if(this.spawn_bolt){
-            this.draw_bolt(context, program_state, 5);
+            this.draw_bolt(context, program_state, 5, dt);
         }
 
         this.generate_snow(context, program_state, middle, t, dt, this.wind);
@@ -846,7 +848,6 @@ export class Project extends Scene {
 
         this.generate_wind(context, program_state, model_transform, t, dt, [45, 4]);
 
-        console.log(this.spawn_tornado);
         /*
         let rain_transform = Mat4.identity().times(Mat4.rotation(0, 0, 1, 0)); //Math.PI/2-rain_angle
         rain_transform = rain_transform.times(Mat4.rotation(Math.PI/4, 1, 0, 0)).times(Mat4.translation(0, 0, 0)).times(Mat4.scale(0.01, 0.01, 0.6));
@@ -972,7 +973,14 @@ export class Project extends Scene {
         this.draw_windmill(position, context, program_state);
 
         //non-windmill
-        this.draw_sky(context, program_state);
+        if(this.spawn_rain){
+            this.draw_sky(context, program_state, hex_color("#5A5A5A"));
+        } else if(this.spawn_snow){
+            this.draw_sky(context, program_state, hex_color("#aaccff"));
+        } else{
+            this.draw_sky(context, program_state);
+        }
+        
         this.draw_floor(context, program_state);
         this.draw_mtn(context, program_state, -1.5);
         this.draw_mtn(context, program_state, 0.9);

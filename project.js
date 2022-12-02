@@ -324,7 +324,7 @@ export class Project extends Scene {
         this.wind_list.forEach((element, index) => {
             let delta_time = t-element[3];
             let wind_transform = initial_transform.times(Mat4.rotation(wind[0], 0, 1, 0));
-            wind_transform = wind_transform.times(Mat4.translation(-20+element[2] + delta_time*20, 10*element[1], 15*element[0])).times(Mat4.scale(2, 0.1, 1));
+            wind_transform = wind_transform.times(Mat4.translation(-40+element[2] + delta_time*20, 10*element[1], 15*element[0])).times(Mat4.scale(2, 0.1, 1));
             this.shapes.wind.draw(context, program_state, wind_transform, this.materials.rain);
 
             if(delta_time > 5){
@@ -888,7 +888,7 @@ export class Project extends Scene {
         // The parameters of the Light are: position, color, size
         program_state.lights = [new Light(light_position, color(1, 1, 1, 1), 100)];
 
-        let middle = Mat4.translation(27, 0, 35);
+        let middle = Mat4.translation(0, 0, 60);
         /*
     let wind_transform = model_transform.times(Mat4.translation(10*t-20, 0, 0));//.times(Mat4.rotation(Math.PI/8, 0, 0, 1))//.times(Mat4.translation(20*element[0]+dx, 10-f+element[1]+dy, 10*element[2]+dz)).times(Mat4.rotation(Math.PI/2 - wind[0]/180*Math/PI, 0, 1, 0));
     wind_transform = wind_transform.times(Mat4.rotation(2*t, 1, 0, 0)).times(Mat4.scale(2, 0.1, 1));
@@ -904,7 +904,10 @@ export class Project extends Scene {
         this.generate_snow(context, program_state, middle, t, dt, this.wind);
         this.generate_rain(context, program_state, middle, t, dt, this.wind);
 
-        this.generate_wind(context, program_state, model_transform, t, dt, [45, 4]);
+        if(this.wind[1] > 0){
+            this.generate_wind(context, program_state, middle, t, dt, [this.wind[0]+Math.PI/2, this.wind[1]]);
+        }
+        
 
         /*
         let rain_transform = Mat4.identity().times(Mat4.rotation(0, 0, 1, 0)); //Math.PI/2-rain_angle
@@ -1020,10 +1023,12 @@ export class Project extends Scene {
             this.draw_sky(context, program_state, hex_color("#5A5A5A"));
         } else if(this.spawn_snow){
             this.draw_sky(context, program_state, hex_color("#aaccff"));
+        } else if(this.spawn_bolt){
+            this.draw_sky(context, program_state, hex_color("#C5B4E3"));
         } else{
             this.draw_sky(context, program_state);
         }
-        
+        //#C5B4E3
         this.draw_floor(context, program_state);
         this.draw_mtn(context, program_state, -1.5);
         this.draw_mtn(context, program_state, 0.9);

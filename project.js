@@ -15,7 +15,7 @@ class Line extends Shape {
             [0,0,0], [1,0,0]
         ];
 
-        const white = hex_color("#ffffff");
+        const white = hex_color("#9e35e0");
         this.arrays.color = Array(2).fill(white);
         this.indices = false;
     }
@@ -315,6 +315,7 @@ export class Project extends Scene {
         } else if(w == "bolt"){
             if(!this.spawn_tornado && !this.spawn_bolt){
                 this.spawn_bolt = true;
+                this.spawn_rain = true;
                 this.spawn_snow = false;
             }
         }
@@ -425,8 +426,8 @@ export class Project extends Scene {
 
     gernerate_bolt(gen){
         let ys = 75;
-        let xs = (2*Math.random()-1)*20;
-        let xd = (2*Math.random()-1)*20;
+        let xs = (2*Math.random()-1)*30;
+        let xd = (2*Math.random()-1)*30;
         let yd = -5;
 
         let bolt_path = [];
@@ -456,7 +457,7 @@ export class Project extends Scene {
                 new_bolt.push(ls1, ls2);
 
                 let branch_probability = Math.random();
-                if(branch_probability > 0.5){
+                if(branch_probability > 0.66){
                     let dir = midpt.minus(element[0]);
                     let length = Math.sqrt(Math.pow(dir[0], 2) + Math.pow(dir[1], 2));
                     let angle = Math.atan(dir[1]/dir[0]);
@@ -567,7 +568,7 @@ export class Project extends Scene {
     }
 
     draw_sky(context, program_state, sky_color=null) {
-        if(this.spawn_snow || this.spawn_rain){
+        if(this.spawn_snow || this.spawn_rain || this.spawn_bolt){
             this.shapes.circle.draw(context, program_state, this.sun_tran, this.materials.sky.override({color: sky_color}));
             this.shapes.floor.draw(context, program_state, this.sky_tran, this.materials.sky.override({color: sky_color}));
         } else if (this.night) {
@@ -914,7 +915,7 @@ export class Project extends Scene {
             this.generate_wind(context, program_state, middle, t, dt, wind);
         }
         
-        if(!this.spawn_rain && !this.spawn_snow){
+        if((!this.spawn_rain && !this.spawn_snow) || this.spawn_bolt){
             let tr = Mat4.translation(0, -9.9, 65).times(Mat4.rotation(-Math.PI/2, 1, 0, 0)).times(Mat4.scale(0.5, 8, 1));
             this.shapes.wind.draw(context, program_state, tr, this.materials.wind.override({color: hex_color("000000", 0.1)}));
 
@@ -1038,12 +1039,12 @@ export class Project extends Scene {
         this.draw_windmill(position, context, program_state);
 
         //non-windmill
-        if(this.spawn_rain){
+        if(this.spawn_bolt){
+            this.draw_sky(context, program_state, hex_color("#7f7f7f"));
+        }else if(this.spawn_rain){
             this.draw_sky(context, program_state, hex_color("#5A5A5A"));
         } else if(this.spawn_snow){
             this.draw_sky(context, program_state, hex_color("#aaccff"));
-        } else if(this.spawn_bolt){
-            this.draw_sky(context, program_state, hex_color("#C5B4E3"));
         } else{
             this.draw_sky(context, program_state);
         }

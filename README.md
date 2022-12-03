@@ -3,21 +3,21 @@
 ### How to Run:
 
 1. Run File according to your OS
-   Windows: host.bat
-   MacOS: host.command
+   - Windows: host.bat
+   - MacOS: host.command
 
 2. Open Browser to http://localhost:8000
 
 ### Controls:
-q - subtract from wind angle
-w - add to wind angle
-a - subtract from wind intensity
-s - add to wind intensity
-0 - spawn gust
-1 - spawn tornado
-2 - toggle snow
-3 - toggle rain
-4 - spawn lightning
+- q - subtract from wind angle
+- w - add to wind angle
+- a - subtract from wind intensity
+- s - add to wind intensity
+- 0 - spawn gust
+- 1 - spawn tornado
+- 2 - toggle snow
+- 3 - toggle rain
+- 4 - spawn lightning
 
 ### Gettting Started:
 
@@ -37,7 +37,7 @@ your heart's content.
 10. Change Time of day (day/night)
 
 ### Contributors
-Brandon Le
-Kevin Shen
-Ruben Rodriguez
+- Brandon Le
+- Kevin Shen
+- Ruben Rodriguez
 

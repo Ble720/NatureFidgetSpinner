@@ -267,27 +267,33 @@ export class Project extends Scene {
         this.live_string(box => box.textContent = "Tornado Location: " + "("
             + this.tornado_loc[0].toFixed(2) + "," + this.tornado_loc[1].toFixed(2)+")");
         this.new_line();
-        this.key_triggered_button("wind angle +", ["w"], this.plusAngle);
         this.key_triggered_button("wind angle -", ["q"], this.minusAngle);
+        this.key_triggered_button("wind angle +", ["w"], this.plusAngle);
+        
         this.new_line();
-        this.key_triggered_button("wind speed +", ["s"], this.plusSpd);
         this.key_triggered_button("wind speed -", ["a"], this.minusSpd);
-        this.new_line();
-        this.key_triggered_button("Tornado Spawn", ["0"], () => this.setWeather("tornado"));
-        this.key_triggered_button("Lightning Spawn", ["b"], () => this.setWeather("bolt"));
-        this.key_triggered_button("Gust Spawn", ["g"], () => this.gust_active = true);
+        this.key_triggered_button("wind speed +", ["s"], this.plusSpd);
         this.new_line();
 
         this.key_triggered_button("Day/Night", ["n"], () => {this.night ^= 1;});
         this.new_line();
-        this.key_triggered_button("Toggle Snow", ["o"], () => {
-            this.setWeather("snow")
+        
+        
+        this.key_triggered_button("Gust Spawn", ["0"], () => this.gust_active = true);
+        this.key_triggered_button("Tornado Spawn", ["1"], () => this.setWeather("tornado"));
+        
+        
+        this.new_line();
+        this.key_triggered_button("Toggle Snow", ["2"], () => {
+            this.setWeather("snow");
             this.time_after_weather = this.time_elapsed;
         });
-        this.key_triggered_button("Toggle Rain", ["p"], () => {
-            this.setWeather("rain")
+        this.key_triggered_button("Toggle Rain", ["3"], () => {
+            this.setWeather("rain");
             this.time_after_weather = this.time_elapsed;
         });
+        this.key_triggered_button("Lightning Spawn", ["4"], () => this.setWeather("bolt"));
+        
     }
 
     setWeather(w){
@@ -795,7 +801,7 @@ export class Project extends Scene {
         }
     }
 
-    /*texture_buffer_init(gl) {
+    texture_buffer_init(gl) {
         // Depth Texture
         this.lightDepthTexture = gl.createTexture();
         // Bind it to TinyGraphics
@@ -855,7 +861,7 @@ export class Project extends Scene {
             this.unusedTexture,         // texture
             0);                    // mip level
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-    }*/
+    }
 
     follow_tornado(){
         this.wind[1] = 200/(Math.sqrt((this.tornado_loc[0])**2 + (this.tornado_loc[1]-60)**2)); //maybe 100/dist(windmill, tornado)
@@ -954,35 +960,47 @@ export class Project extends Scene {
                             .times(Mat4.rotation(-Math.PI/4, 0,1,0))
                             .times(Mat4.scale(1, 10*Math.sin(this.curr_rot), 10));
                         */
+
+            let min = 0.1
+            let min_len = (8-min)/2*Math.cos(2*this.reaction_wind[0])+(8+min)/2;
             let tr2 = Mat4.translation(0, -9.9, 75)
                 .times(Mat4.rotation(this.reaction_wind[0]-Math.PI/2,0,1,0))
                 .times(Mat4.translation(2,0,0))
                 .times(Mat4.rotation(-Math.PI/2, 1, 0, 0))
                 .times(Mat4.scale(9*Math.cos(this.reaction_wind[0])+1, 10, 10));
+            
+            let angle_c = this.curr_rot+Math.PI/3+Math.PI/2;
+            let cr1 = 2*angle_c;
+            let harmonic1 = Math.sin(cr1)// + Math.cos(3*cr1)/3 + Math.cos(5*cr1)/5;
 
             let tr2a = Mat4.translation(0, -9.9, 75)
                 .times(Mat4.rotation(this.reaction_wind[0]-Math.PI/2,0,1,0))
                 .times(Mat4.translation(1.5,0,0))
                 .times(Mat4.rotation(-Math.PI/2, 1, 0, 0))
                 .times(Mat4.rotation(this.curr_rot,0,0,1))
-                .times(Mat4.scale(4.0*Math.abs(Math.cos(this.reaction_wind[0]))+4.0, 0.4*Math.abs(Math.cos(this.reaction_wind[0]))+0.6, 0.1))
+                .times(Mat4.scale((8-min_len)/2*harmonic1+(8+min_len)/2, 1, 0.1))
                 .times(Mat4.translation(0.5,0,0));
 
+            let cr2 = 2*(angle_c+2*Math.PI/3);
+            let harmonic2 = Math.sin(cr2)// + Math.cos(3*cr2)/3 + Math.cos(5*cr2)/5;
 
             let tr2b = Mat4.translation(0, -9.9, 75)
                 .times(Mat4.rotation(this.reaction_wind[0]-Math.PI/2,0,1,0))
                 .times(Mat4.translation(1.5,0,0))
                 .times(Mat4.rotation(-Math.PI/2, 1, 0, 0))
                 .times(Mat4.rotation(this.curr_rot+2*Math.PI/3,0,0,1))
-                .times(Mat4.scale(4.0*Math.abs(Math.cos(this.reaction_wind[0]))+4.0, 0.4*Math.abs(Math.cos(this.reaction_wind[0]))+0.6, 0.1))
+                .times(Mat4.scale((8-min_len)/2*harmonic2+(8+min_len)/2, 1, 0.1))
                 .times(Mat4.translation(0.5,0,0));
+
+            let cr3 = 2*(angle_c+4*Math.PI/3);
+            let harmonic3 = Math.sin(cr3)// + Math.cos(3*cr3)/3 + Math.cos(5*cr3)/5;
 
             let tr2c = Mat4.translation(0, -9.9, 75)
                 .times(Mat4.rotation(this.reaction_wind[0]-Math.PI/2,0,1,0))
                 .times(Mat4.translation(1.5,0,0))
                 .times(Mat4.rotation(-Math.PI/2, 1, 0, 0))
                 .times(Mat4.rotation(this.curr_rot+4*Math.PI/3,0,0,1))
-                .times(Mat4.scale(4.0*Math.abs(Math.cos(this.reaction_wind[0]))+4.0, 0.4*Math.abs(Math.cos(this.reaction_wind[0]))+0.6, 0.1))
+                .times(Mat4.scale((8-min_len)/2*harmonic3+(8+min_len)/2, 1, 0.1))
                 .times(Mat4.translation(0.5,0,0));
 
             if (this.night) {
